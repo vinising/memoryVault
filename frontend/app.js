@@ -67,13 +67,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // Bind Tab Click Switchers
     if (tabChatBtn) {
-        tabChatBtn.addEventListener("click", () => switchView("chat"));
+        tabChatBtn.addEventListener("click", () => {
+            console.log("Chat tab clicked");
+            switchView("chat");
+        });
     }
     if (tabTimelineBtn) {
-        tabTimelineBtn.addEventListener("click", () => switchView("timeline"));
+        tabTimelineBtn.addEventListener("click", () => {
+            console.log("Timeline tab clicked");
+            switchView("timeline");
+        });
     }
     if (tabGraphBtn) {
-        tabGraphBtn.addEventListener("click", () => switchView("graph"));
+        tabGraphBtn.addEventListener("click", () => {
+            console.log("Graph tab clicked");
+            switchView("graph");
+        });
     }
     
     // Auto-focus chat input field on '/' keypress
@@ -867,79 +876,29 @@ function switchView(viewName) {
     currentViewEnv = viewName;
     
     // Reset panes hidden status
-    chatPane.classList.add("hidden");
-    timelinePane.classList.add("hidden");
-    graphPane.classList.add("hidden");
+    if (chatPane) chatPane.classList.add("hidden");
+    if (timelinePane) timelinePane.classList.add("hidden");
+    if (graphPane) graphPane.classList.add("hidden");
     
     // Clean tab styling
-    tabChatBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
-    tabTimelineBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
-    tabGraphBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
+    if (tabChatBtn) tabChatBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
+    if (tabTimelineBtn) tabTimelineBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
+    if (tabGraphBtn) tabGraphBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
 
     if (viewName === "chat") {
-        chatPane.classList.remove("hidden");
-        tabChatBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
+        if (chatPane) chatPane.classList.remove("hidden");
+        if (tabChatBtn) tabChatBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
         scrollChatBottom();
     } else if (viewName === "timeline") {
-        timelinePane.classList.remove("hidden");
-        tabTimelineBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
+        if (timelinePane) timelinePane.classList.remove("hidden");
+        if (tabTimelineBtn) tabTimelineBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
         renderTimelineView();
     } else if (viewName === "graph") {
-        graphPane.classList.remove("hidden");
-        tabGraphBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
+        if (graphPane) graphPane.classList.remove("hidden");
+        if (tabGraphBtn) tabGraphBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
         fetchAndRenderGraph();
     }
 }
-
-let allTimelineEntries = [];
-let activeTimelineStatusFilter = "all";
-let activeTimelineTagFilters = [];
-
-async function triggerTimelineSearch() {
-    const queryInput = document.getElementById("timelineSearchQuery");
-    const sortOrderSelect = document.getElementById("timelineSortOrder");
-    if (!queryInput) return;
-    
-    const rawVal = queryInput.value.trim();
-    const sort_by = sortOrderSelect ? sortOrderSelect.value : "recency";
-    
-    let finalQuery = "";
-    let searchMode = "keyword";
-    if (rawVal) {
-        if (rawVal.includes(",")) {
-            // Comma-separated terms → natural language query for semantic embedding search
-            // Backend falls back to FTS5 OR if Ollama embedding model is unavailable
-            finalQuery = rawVal.split(",").map(t => t.trim()).filter(Boolean).join(" ");
-            searchMode = "semantic";
-        } else {
-            finalQuery = rawVal;
-        }
-    }
-    
-    try {
-        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(finalQuery)}&sort_by=${sort_by}&mode=${searchMode}`);
-        if (res.ok) {
-            const entries = await res.json();
-            allTimelineEntries = entries;
-            updateTimelineTagFiltersUI();
-            renderFilteredTimeline();
-        }
-    } catch (err) {
-        console.error("Timeline query fetch error", err);
-    }
-}
-window.triggerTimelineSearch = triggerTimelineSearch;
-
-async function clearTimelineSearch() {
-    const queryInput = document.getElementById("timelineSearchQuery");
-    const sortOrderSelect = document.getElementById("timelineSortOrder");
-    if (queryInput) queryInput.value = "";
-    if (sortOrderSelect) sortOrderSelect.value = "recency";
-    activeTimelineTagFilters = [];
-    
-    await renderTimelineView();
-}
-window.clearTimelineSearch = clearTimelineSearch;
 
 async function renderTimelineView() {
     if (!timelineContainer) return;
@@ -1114,7 +1073,7 @@ function renderFilteredTimeline() {
             // Subtle Date Divider
             html += `
                 <div class="mb-4 mt-8 first:mt-0 flex items-center px-2">
-                    <span class="text-sm font-bold text-white tracking-wide shrink-0">${groupName}</span>
+                    <span class="text-sm font-bold text-white tracking-wide shrink-0">\${groupName}</span>
                 </div>
             `;
             
@@ -1140,23 +1099,23 @@ function renderFilteredTimeline() {
                     const tagArr = entry.tags.split(",").map(t => t.trim()).filter(Boolean);
                     if (tagArr.length > 0) {
                         tagsHtml = `<div class="flex flex-wrap gap-1 mt-3">` + 
-                            tagArr.map(t => `<span class="bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full text-3xs font-medium text-gray-400 shrink-0">#${t}</span>`).join("") +
+                            tagArr.map(t => `<span class="bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full text-3xs font-medium text-gray-400 shrink-0">#\${t}</span>`).join("") +
                             `</div>`;
                     }
                 }
                 
                 html += `
-                    <div class="bg-gray-900 border ${borderColor} rounded-[20px] p-5 shadow-sm transform transition duration-300 hover:scale-[1.01] hover:shadow-md cursor-pointer flex flex-col group" onclick="snapFocusToNote('\${entry.id}')">
+                    <div class="bg-gray-900 border \${borderColor} rounded-[20px] p-5 shadow-sm transform transition duration-300 hover:scale-[1.01] hover:shadow-md cursor-pointer flex flex-col group" onclick="snapFocusToNote('\${entry.id}')">
                         <div class="flex justify-between items-start mb-2">
                             <div class="flex items-center space-x-2">
-                                <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">\${entry.bucket}</span>
-                                <span class="text-xs text-gray-500 font-medium">${timeStr}</span>
+                                <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full \${badgeColor}">\${entry.bucket}</span>
+                                <span class="text-xs text-gray-500 font-medium">\${timeStr}</span>
                             </div>
                             <span class="text-3xs rounded px-1.5 py-0.5 border border-gray-800 text-gray-500 font-mono">\${entry.id}</span>
                         </div>
                         <h3 class="text-base font-bold text-white mb-1.5 line-clamp-2">\${escapeHtml(entry.title)}</h3>
-                        ${mdDesc ? `<div class="text-sm text-gray-400 line-clamp-3 leading-relaxed">${mdDesc}</div>` : ''}
-                        ${tagsHtml}
+                        \${mdDesc ? `<div class="text-sm text-gray-400 line-clamp-3 leading-relaxed">\${mdDesc}</div>` : ''}
+                        \${tagsHtml}
                         <div class="mt-3 flex items-center">
                             <i class="fa-solid fa-chevron-right text-gray-700 group-hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100 text-xs"></i>
                         </div>

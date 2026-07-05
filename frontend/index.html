@@ -35,9 +35,22 @@
         }
 
         /* Glassmorphism sidebar for high-end look */
-        .sidebar {
+                .sidebar {
             background-color: #161b22;
             border-right: 1px solid #30363d;
+            transition: width 0.3s ease, transform 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            width: 80px; /* Reduced width */
+        }
+        .sidebar.collapsed .text-md, 
+        .sidebar.collapsed .text-xs,
+        .sidebar.collapsed h2,
+        .sidebar.collapsed p,
+        .sidebar.collapsed span:not(.font-mono),
+        .sidebar.collapsed details {
+            display: none !important;
         }
 
         /* Custom bubble gradients */
