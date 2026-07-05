@@ -1,8 +1,8 @@
-const CACHE_NAME = "memoryvault-cache-v2";
+const CACHE_NAME = "memoryvault-cache-v3";
 const ASSETS = [
   "/",
   "/static/index.html",
-  "/static/app.js",
+  "/static/app.js?v=2",
   "/static/manifest.json",
   "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
 ];

@@ -1,6 +1,8 @@
 import sqlite3
 import json
 import os
+import struct
+import math
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from backend.config import MEMORYVAULT_DB_PATH
@@ -39,6 +41,18 @@ class EntryStore:
             # Run migration to add attachments column if it's an existing database that doesn't have it yet
             try:
                 conn.execute("ALTER TABLE entries ADD COLUMN attachments TEXT DEFAULT '[]';")
+            except sqlite3.OperationalError:
+                pass
+
+            # Run migration to add parent_id column for sub-task hierarchy support
+            try:
+                conn.execute("ALTER TABLE entries ADD COLUMN parent_id TEXT DEFAULT NULL REFERENCES entries(id);")
+            except sqlite3.OperationalError:
+                pass
+
+            # Run migration to add embedding column for semantic vector search
+            try:
+                conn.execute("ALTER TABLE entries ADD COLUMN embedding BLOB DEFAULT NULL;")
             except sqlite3.OperationalError:
                 pass
 
@@ -133,6 +147,11 @@ class EntryStore:
         except Exception:
             attachments_list = []
             
+        try:
+            parent_id = row["parent_id"]
+        except Exception:
+            parent_id = None
+
         return Entry(
             id=row["id"],
             bucket=row["bucket"],
@@ -141,6 +160,7 @@ class EntryStore:
             description=row["description"],
             timestamp=row["timestamp"],
             status=row["status"],
+            parent_id=parent_id,
             attachments=attachments_list
         )
 
@@ -162,8 +182,8 @@ class EntryStore:
 
             conn.execute(
                 """
-                INSERT INTO entries (id, seq, bucket, title, tags, description, timestamp, status, attachments)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)
+                INSERT INTO entries (id, seq, bucket, title, tags, description, timestamp, status, attachments, parent_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
                 """,
                 (
                     padded_id,
@@ -173,7 +193,8 @@ class EntryStore:
                     entry_in.tags or "",
                     entry_in.description or "",
                     timestamp_str,
-                    attachments_json
+                    attachments_json,
+                    entry_in.parent_id
                 )
             )
             conn.commit()
@@ -192,11 +213,77 @@ class EntryStore:
                 return self._row_to_entry(row)
         return None
 
-    def search_entries(self, query: str = "", sort_by: str = "recency") -> List[Entry]:
+    def get_subtasks(self, parent_id: str) -> List[Entry]:
+        if not parent_id.startswith("#"):
+            parent_id = f"#{int(parent_id):04d}" if parent_id.isdigit() else f"#{parent_id}"
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM entries WHERE parent_id = ? ORDER BY seq ASC",
+                (parent_id,)
+            )
+            return [self._row_to_entry(row) for row in cursor.fetchall()]
+
+    def update_embedding(self, entry_id: str, vector: list) -> None:
+        """Store a float32 embedding blob for the given entry."""
+        if not vector:
+            return
+        blob = struct.pack(f"{len(vector)}f", *vector)
+        with self._get_connection() as conn:
+            conn.execute("UPDATE entries SET embedding = ? WHERE id = ?", (blob, entry_id))
+            conn.commit()
+
+    def semantic_search(self, query_text: str, top_k: int = 20) -> List[Entry]:
         """
-        Perform a ultra-fast fuzzy matching over notes.
-        Supports advanced token filters if present (e.g., status:done, bucket:US).
+        Cosine-similarity search over stored float32 embedding blobs.
+        Returns up to top_k entries sorted by descending similarity.
+        Returns empty list if no embeddings exist or Ollama is unavailable.
         """
+        from backend.llm import embed_text  # local import to avoid circular dependency
+        query_vec = embed_text(query_text)
+        if not query_vec:
+            return []
+        q_norm = math.sqrt(sum(x * x for x in query_vec))
+        if q_norm == 0:
+            return []
+
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM entries WHERE embedding IS NOT NULL ORDER BY timestamp DESC"
+            )
+            rows = cursor.fetchall()
+
+        scored = []
+        for row in rows:
+            blob = row["embedding"]
+            if not blob:
+                continue
+            n = len(blob) // 4
+            if n != len(query_vec):
+                continue
+            vec = struct.unpack(f"{n}f", blob)
+            dot = sum(a * b for a, b in zip(query_vec, vec))
+            v_norm = math.sqrt(sum(x * x for x in vec))
+            if v_norm == 0:
+                continue
+            scored.append((dot / (q_norm * v_norm), row))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [self._row_to_entry(row) for _, row in scored[:top_k]]
+
+    def search_entries(self, query: str = "", sort_by: str = "recency", mode: str = "keyword") -> List[Entry]:
+        """
+        mode: "keyword" (FTS5 + metadata filters, default)
+              "semantic" (embedding cosine similarity; falls back to keyword FTS5 if Ollama is offline)
+        """
+        if mode == "semantic" and query.strip():
+            sem = self.semantic_search(query.strip())
+            if sem:
+                return sem
+            # Semantic unavailable — fall back to FTS5 OR across each query word
+            fts_fallback = " OR ".join(f"{w}*" for w in query.split() if w.strip())
+            return self.search_entries(fts_fallback, sort_by, mode="keyword")
+
+        # --- keyword / metadata filter path ---
         # Parse query for metadata tags inside keyword boundaries (e.g. status:open, bucket:TT, tag:xyz)
         filters = {}
         tag_filters = []
@@ -232,6 +319,12 @@ class EntryStore:
             elif b_val == "PT": b_val = "ISSUE"
             where_clauses.append("upper(bucket) = ?")
             params.append(b_val)
+        if "parent" in filters:
+            p_id = filters["parent"]
+            if not p_id.startswith("#"):
+                p_id = f"#{p_id}"
+            where_clauses.append("parent_id = ?")
+            params.append(p_id)
 
         # Apply tag intersection filter (reduces results, since each tag must be matched via AND)
         for t in tag_filters:
@@ -320,7 +413,8 @@ class EntryStore:
             "title": patch.title,
             "tags": patch.tags,
             "description": patch.description,
-            "status": patch.status
+            "status": patch.status,
+            "parent_id": patch.parent_id
         }
 
         for k, v in fields_to_map.items():
@@ -351,8 +445,12 @@ class EntryStore:
 
     def export_all_entries(self) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
-            cursor = conn.execute("SELECT * FROM entries ORDER BY seq ASC")
-            # Serialize cleanly into standard JSON list dictionary
+            # Exclude embedding BLOB — it's a machine-generated search index, not user data,
+            # and bytes are not JSON-serialisable. It will be regenerated on the next search.
+            cursor = conn.execute(
+                "SELECT id, seq, bucket, title, tags, description, timestamp, status, attachments, parent_id "
+                "FROM entries ORDER BY seq ASC"
+            )
             return [dict(row) for row in cursor.fetchall()]
 
     def import_all_entries(self, entries_list: List[Dict[str, Any]]):

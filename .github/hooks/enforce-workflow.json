@@ -1,0 +1,7 @@
+{
+  "name": "enforce-issue-commits",
+  "description": "Block direct commits to main branch and require an issue reference in commit messages",
+  "events": ["PreToolUse"],
+  "tools": ["run_in_terminal"],
+  "command": "if [[ \"$1\" == *\"git commit\"* ]]; then current_branch=$(git rev-parse --abbrev-ref HEAD); if [[ \"$current_branch\" == \"main\" || \"$current_branch\" == \"master\" ]]; then echo \"Error: Direct commits to main are blocked. Please create a branch and open a PR.\"; exit 1; fi; if [[ \"$1\" != *\"#\"* ]]; then echo \"Error: Commit message must reference an issue number (e.g., #123).\"; exit 1; fi; fi; exit 0;"
+}

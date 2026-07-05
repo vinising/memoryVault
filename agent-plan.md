@@ -1,6 +1,25 @@
 # Agent Plan Metadata
 
-## Current Task
+## Workflow
+This repository uses **GitHub Issues + PRs** as the source of truth for all tasks.
+- Every qualifying user ask → GitHub Issue in `vinising/memoryVault`
+- Implementation → branch `issue-<N>-<slug>`
+- Done → PR with `Closes #<N>` → merge → issue auto-closes
+
+The `plans/` folder is superseded — GitHub Issues are the plan artifacts.
+
+## Active Task
+- Issue: none
+- Branch: main
+- Status: idle
+
+## History
+- 2026-07-06: Migrated workflow from plan-first / agent-plan.md model to GitHub Issues + PRs.
+
+---
+<!-- archive below -->
+
+## Former Current Task
 - User ask summary: Start implementation of persistent plan-first instructions for multi-step tasks.
 - Active plan file: plans/2026-07-05-plan-first-instructions-implementation.md
 - Status: Completed

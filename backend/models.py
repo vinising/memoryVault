@@ -37,6 +37,7 @@ class NewEntry(BaseModel):
     title: str = Field(..., min_length=1, description="One-line summary")
     tags: Optional[str] = Field(default="", description="Comma-separated tags")
     description: Optional[str] = Field(default="", description="Deep detailed description")
+    parent_id: Optional[str] = Field(default=None, description="ID of parent entry for sub-task linking")
     attachments: Optional[List[Attachment]] = Field(default_factory=list, description="List of file attachments")
 
 class Entry(BaseModel):
@@ -47,6 +48,7 @@ class Entry(BaseModel):
     description: Optional[str] = Field(default="", description="Deep detailed description")
     timestamp: str = Field(..., description="ISO 8601 UTC timestamp")
     status: str = Field(default="open", description="Can be open, in-progress, done, archived")
+    parent_id: Optional[str] = Field(default=None, description="ID of parent entry for sub-task linking")
     attachments: Optional[List[Attachment]] = Field(default_factory=list, description="List of file attachments")
 
 class PartialEntry(BaseModel):
@@ -55,6 +57,7 @@ class PartialEntry(BaseModel):
     tags: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
+    parent_id: Optional[str] = None
     attachments: Optional[List[Attachment]] = None
 
 # Local LLM Trace Model Schema
