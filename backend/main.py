@@ -12,7 +12,7 @@ if str(Path(__file__).parent.parent) not in sys.path:
 
 from typing import List, Optional, Dict
 
-from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -50,7 +50,7 @@ def verify_token(authorization: Optional[str] = Header(None)):
 # --- API ROUTES ---
 
 @app.post("/add", response_model=Entry, dependencies=[Depends(verify_token)])
-def add_new_entry(entry: NewEntry):
+def add_new_entry(entry: NewEntry, background_tasks: BackgroundTasks):
     try:
         # If bucket is not specified, run smart AI classification & semantic tagging
         if not entry.bucket:
@@ -74,14 +74,27 @@ def add_new_entry(entry: NewEntry):
             entry.tags = ",".join(all_tags)
             
         saved_entry = store.add_entry(entry)
+
+        # Generate and persist semantic embedding in the background (non-blocking, best-effort)
+        def _embed_entry():
+            try:
+                from backend.llm import embed_text
+                text = f"{saved_entry.title} {saved_entry.tags or ''} {saved_entry.description or ''}"
+                vector = embed_text(text)
+                if vector:
+                    store.update_embedding(saved_entry.id, vector)
+            except Exception as embed_err:
+                print(f"[Embedding] Background embed failed for {saved_entry.id}: {embed_err}")
+
+        background_tasks.add_task(_embed_entry)
         return saved_entry
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database insert error: {str(e)}")
 
 
 @app.get("/search", response_model=List[Entry], dependencies=[Depends(verify_token)])
-def search_entries(q: str = "", sort_by: str = "recency"):
-    return store.search_entries(q, sort_by=sort_by)
+def search_entries(q: str = "", sort_by: str = "recency", mode: str = "keyword"):
+    return store.search_entries(q, sort_by=sort_by, mode=mode)
 
 
 @app.get("/buckets", response_model=List[BucketModel], dependencies=[Depends(verify_token)])
@@ -111,6 +124,14 @@ def get_single_entry(item_id: str):
     if not entry:
         raise HTTPException(status_code=404, detail="Backlog entry not found")
     return entry
+
+
+@app.get("/item/{item_id}/subtasks", response_model=List[Entry], dependencies=[Depends(verify_token)])
+def get_entry_subtasks(item_id: str):
+    entry = store.get_entry(item_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Parent entry not found")
+    return store.get_subtasks(item_id)
 
 
 @app.patch("/item/{item_id}", response_model=Entry, dependencies=[Depends(verify_token)])
