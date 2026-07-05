@@ -1,0 +1,200 @@
+Explore frontend and backend files to understand Timeline, Tags, Search, text input, and entry attachments
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/models.py)
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/main.py#1-1), lines 1 to 150
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#1-1), lines 1 to 100
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#1-1), lines 1 to 150
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#1-1), lines 1 to 100
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#40-40), lines 40 to 300
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#100-100), lines 100 to 350
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#100-100), lines 100 to 250
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/main.py#150-150), lines 150 to 250
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#350-350), lines 350 to 500
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#250-250), lines 250 to 400
+
+Searched for text `timeline|Timeline` (`**/frontend/**`), 41 results
+
+Searched for text `attachment|file|upload|image|media|multimedia` (`**/backend/**`), 31 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#600-600), lines 600 to 700
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#700-700), lines 700 to 900
+
+Searched for text `tags|tag filter|tag filtering` (`**/frontend/app.js`), 12 results
+
+Searched for text `Shift|Enter|keydown|keypress` (`**/frontend/app.js`), 25 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#900-900), lines 900 to 962
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#400-400), lines 400 to 465
+
+Searched for regex `chatForm|form.*submit|chatInput.*keydown|chatInput.*keypress` (`**/frontend/app.js`), 2 results
+
+Searched for regex `shiftKey|metaKey|ctrlKey` (`**/frontend/app.js`), 1 result
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#962-962), lines 962 to 962
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/llm.py#1-1), lines 1 to 100
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/plugins)
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/config.py)
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/plugins/csv_export.py)
+
+Read memory
+
+Created memory file [](file:///Users/vinising/Library/Application%20Support/Code/User/workspaceStorage/110a86fdeed7c414cca59992fe82ba9e/GitHub.copilot-chat/memory-tool/memories/repo/memoryvault-codebase.md)
+
+Read [](file:///Users/vinising/Library/Application%20Support/Code/User/workspaceStorage/110a86fdeed7c414cca59992fe82ba9e/GitHub.copilot-chat/chat-session-resources/5ab51d10-9bf3-40ce-81b5-03d53b1eff48/call_MHxZdzBqZHN1TldJT0lvaXFvWmg__vscode-1783241676903/content.txt)
+
+Searched for text `Timeline` (`**/frontend/index.html`), 9 results
+
+Searched for text `renderTimelineView` (`**/frontend/app.js`), 3 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#620-620), lines 620 to 760
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#230-230), lines 230 to 330
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#330-330), lines 330 to 450
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#90-90), lines 90 to 180
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#170-170), lines 170 to 220
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#220-220), lines 220 to 250
+
+Searched for text `tag` (`**/frontend/app.js`), 16 results
+
+Searched for text `tags` (`**/frontend/app.js`), 12 results
+
+Searched for text `search` (`**/frontend/app.js`), 11 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#150-150), lines 150 to 230
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#100-100), lines 100 to 155
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#50-50), lines 50 to 130
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#20-20), lines 20 to 50
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#50-50), lines 50 to 90
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/models.py#1-1), lines 1 to 50
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/main.py#30-30), lines 30 to 80
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/main.py#1-1), lines 1 to 30
+
+Searched for text `mount` (`**/backend/main.py`), 4 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/main.py#290-290), lines 290 to 316
+
+Searched for text `app.js` (`**/frontend/index.html`), 3 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#240-240), lines 240 to 300
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#295-295), lines 295 to 340
+
+Searched for text `appendMessage` (`**/frontend/app.js`), 2 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#810-810), lines 810 to 880
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#880-880), lines 880 to 920
+
+Searched for text `submitNewEntry` (`**/frontend/app.js`), 4 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#250-250), lines 250 to 320
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#130-130), lines 130 to 210
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#790-790), lines 790 to 840
+
+Searched for text `pendingInputPayload` (`**/frontend/app.js`), 5 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#230-230), lines 230 to 260
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Searched for text `openBucketModal` (`**/frontend/app.js`), 1 result
+
+Searched for text `bucketModal` (`**/frontend/app.js`), 6 results
+
+Searched for files matching `**/tests/**/*.py`, 2 matches
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/tests/test_api.py#1-1), lines 1 to 50
+
+Read memory
+
+Read memory
+
+Created memory file [](file:///Users/vinising/Library/Application%20Support/Code/User/workspaceStorage/110a86fdeed7c414cca59992fe82ba9e/GitHub.copilot-chat/memory-tool/memories/NWFiNTFkMTAtOWJmMy00MGNlLTgxYjUtMDNkNTNiMWVmZjQ4/plan.md)
+
+I have thoroughly researched the workspace files, constraints, and architecture of the application. I have designed a comprehensive step-by-step implementation plan to address all of your requirements.
+
+The persistent plan has been saved to /memories/session/plan.md. Below is the scannable plan for your review.
+
+---
+
+## Plan: Multi-feature Expansion of Backlog Management
+
+This plan introduces chronological timeline status filtering, tag-intersection reduction filtering, a persistent visual Search Action button, Shift+Enter soft line-breaks in textareas, and local multi-modal/image attachments.
+
+**Steps**
+
+### Phase 1: Storage & Backend Foundation
+1. **Extend Models**: Add an Attachment model schema and append an attachments list to NewEntry, Entry, and PartialEntry within models.py.
+2. **Database Migrations**: Add an attachments TEXT column with a default value of '[]' to the entries table in store.py inside the database initializer.
+3. **Database Serialization**: Modify store.py's database deserializers and queries (add_entry, update_entry, get_entry, import_all_entries, export_all_entries) to cleanly encode/decode JSON serialization for the attachments list.
+4. **Backend Local Uploads & Static Directories**: Set up a local data/attachments directory to store user-attached images and hook up static-file serving under the /attachments prefix using FastAPI's StaticFiles inside main.py.
+5. **Add Local File Upload Route**: Implement a POST /upload endpoint in main.py that handles multipart file uploads under token security, generates unique filenames, saves content, and returns an item payload with the filename, static url, and content-type.
+
+### Phase 2: Tag-Intersection Search Logic
+6. **AND Query Support**: Update search_entries in store.py to extract and aggregate multiple tag:value filters. Modify backend matching so filters are combined with AND clauses (intersection) rather than UNION/OR clauses, ensuring search results shrink as more tag filters are applied.
+
+### Phase 3: Conversational & Input Interface Enhancements
+7. **Refactor Text Input to Textarea**: Replace the flat text input field with a resizable or auto-growing styled textarea element in index.html to natively support line wrapping.
+8. **Shift+Enter Softbreaks vs enter submit**: Bind keydown event in app.js to prevent default newline behaviour on Enter alone and trigger programmatic form submission while allowing Shift+Enter to register as natural line breaks.
+9. **Visual Search Buttons**: Insert a visual Search Button in the input footer alongside the Submit and Category helper buttons. Bind a mouse event handler to parse this action as a structural /search command to trigger full-text search directly.
+
+### Phase 4: Frontend Attachments Tray & Micro-Previews
+10. **Attachment Selection & Instant-Upload**: Create an input file element in index.html and a Paperclip action button. Hook up app.js to click the hidden file element, upload the selected file, and store details in a client-side layout queue.
+11. **Client Attachment Tray**: Render a horizontal queue bar above the input row displaying uploaded file name cards or graphic thumbnails with removal controls.
+12. **Visual Timeline & Chat Bubble Attachments Rendering**: Enhance bubble and card render templates inside app.js (appendCompletedEntryBubble and renderTimelineView) to display inline graphic images for image payloads and direct download links for standard documents.
+
+### Phase 5: Interactive Timeline Filters
+13. **Local Status Dropdown/Pills**: Embed an status-filtering button pill row inside index.html's timelinePane section. Highlight the actively-selected status button and toggle visible entries.
+14. **Local Tag-Intersection Filters**: Harvest any unique tags present across current timeline list elements, display them as small clickable pills, and filter timeline lists dynamically so that items must contain all currently toggled tags.
+
+**Relevant files**
+- models.py — Add Attachment model and update Entry, NewEntry, PartialEntry.
+- store.py — Alter entries table schema to include attachments, serialize fields to JSON, and update FTS search query parsing to support multiple tag criteria matching.
+- main.py — Establish POST /upload, configure static files mount for data/attachments, and update endpoint specifications.
+- index.html — Replace chat entry input with textarea, add status filter buttons, the tag filters container, file input element, attachment tray, and action search buttons.
+- app.js — Add event bindings for Shift+Enter, attachment selection, visual searches, dynamic status/tag filters on timeline, upload helpers, and rendering templates.
+
+**Verification**
+1. **Automated Integration Tests**: Add a dedicated integration test suite verifying file attachment payloads and search intersection operations in test_api.py and run via pytest.
+2. **Manual Attachment & Upload Verification**: Connect to development system local server, upload several images, write descriptions, and verify they save cleanly and display inline in Chat pane and Timeline pane.
+3. **Manual Search Button Operation**: Type a keyword in the chatInput bar and click the new Search button. Confirm search executes and filters entries.
+4. **Manual Timeline Filtering**: Go to Timeline pane, click through different status filters, click tags, and confirm lists correctly filter down.
+
+**Decisions**
+- Local filesystem storage (data/attachments/) will be used over database BLOBs or cloud services to ensure self-contained portability and absolute offline capability.
+- Timeline status and tag filters will run entirely client-side on current fetched lists to preserve real-time visual response speeds and ensure local indexing remains coherent.
+
+---
+
+Please let me know if you would like me to modify any aspect of this plan or if you give your approval to proceed with implementation!

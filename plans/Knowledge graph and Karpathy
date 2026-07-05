@@ -1,0 +1,146 @@
+Read memory [](file:///Users/vinising/Library/Application%20Support/Code/User/workspaceStorage/110a86fdeed7c414cca59992fe82ba9e/GitHub.copilot-chat/memory-tool/memories/repo/vibe-engineering.md)
+
+Searched for files matching `**/backend/**`, 12 matches
+
+Searched for files matching `**/frontend/**`, 4 matches
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/models.py)
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/store.py#1-1), lines 1 to 150
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/main.py#1-1), lines 1 to 150
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/main.py#151-151), lines 151 to 295
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/llm.py#1-1), lines 1 to 120
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/backend/llm.py#121-121), lines 121 to 240
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#1-1), lines 1 to 150
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/app.js#151-151), lines 151 to 300
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#1-1), lines 1 to 200
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/frontend/index.html#201-201), lines 201 to 358
+
+Searched for text `EPIC`, 26 results
+
+Searched for text `US`, 83 results
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/tests/test_api.py)
+
+Read [](file:///Users/vinising/Desktop/Projects/MemoryVault/tests/test_store.py)
+
+Created memory file [](file:///Users/vinising/Library/Application%20Support/Code/User/workspaceStorage/110a86fdeed7c414cca59992fe82ba9e/GitHub.copilot-chat/memory-tool/memories/YjkwNzFmMzQtOWM4Ny00NDI5LTg2ODItMDU3MDNlMjMxMGE3/plan.md)
+
+Here is the product management redesign and technical implementation plan to evolve **MemoryVault** into a generalist knowledge-sharing and task-management platform.
+
+---
+
+## Plan: Generalist Product Redesign & Obsidian-style Knowledge Graph
+
+We are transitioning MemoryVault from developer-centric terminology to an intuitive, product-driven, and generalist category system. In addition, we will introduce a native, offline-ready Obsidian-style force-directed interactive knowledge graph and Karpathy-inspired local retrieval mechanisms.
+
+### Product Redesign: Bucket Alignment
+We replace technical jargon (EPIC, US, TT, PT) with highly intuitive, generalist concepts:
+- **GOAL** (replaces **EPIC**): Large-scale strategic themes, major milestones, key outcomes, or long-term projects.
+- **NOTE** (replaces **US**): Reference guides, research, brainstorm seeds, learning, thoughts, specifications, or meeting insights.
+- **TASK** (replaces **TT**): Actionable check-offs, tactical next steps, chores, or to-dos.
+- **ISSUE** (replaces **PT**): Obstacles, bugs, friction points, blockers, or critical challenges.
+
+To guarantee backwards compatibility with existing user databases, we run an inline SQLite migration query upon database connection. It seamlessly translates legacy categories into their updated counterparts.
+
+---
+
+### Karpathy-Style Knowledge Base Integration
+Andrej Karpathy’s knowledge workflow focuses on linking notes, discovering latent relationships, and leveraging LLM-assisted context retrieval. We map this into MemoryVault via three core features:
+1. **Semantic RAG Conversational Router**: Upgrade the `/chat` route. Instead of sending the top 40 raw records blindly, we query the SQL FTS5 index for search words found in the user's prompt, pull matching tags, merge them with chronological recent entries, and provide a context-enriched subset. This lets the LLM cite specific historical notes and cross-reference them.
+2. **Automatic LLM Relationship Suggestions (Auto-Linking)**: Enhance the `classify_and_tag_entry` routine so that when a new note is parsed, the LLM checks recent tag structures and suggests links (e.g., appending a text block like `Links: #0012` directly to the description or inserting double-bracket syntax `[[#0012]]`).
+3. **Double-Bracket Clickable Links**: Parse double-bracket link text like `[[#0012]]` or `#0012` in chat messages to render as interactive, clickable hyper-links that automatically snap node focus.
+
+---
+
+### Obsidian-Style Interactive Knowledge Graph
+We will implement an interactive HTML5 Canvas 2D Force-Directed Graph view directly inside the frontend, which will be 100% offline-ready.
+
+#### Graph Physics Model
+The physics model operates in real-time on visual nodes using the following forces:
+- **Gravity Force**: Pulls all nodes toward the center of the canvas:
+  $$F_{gravity} = -c_g \cdot (\vec{p}_{node} - \vec{p}_{center})$$
+- **Repulsive Force (Charge)**: Nodes push away from each other to prevent overlapping (similar to Coulomb's Law):
+  $$F_{repulsion} = \frac{c_r}{d^2}$$
+- **Attractive Force (Spring)**: Connected nodes are pulled together along relationship edges (similar to Hooke's Law):
+  $$F_{attraction} = c_s \cdot (d - d_{rest})$$
+- **Drag Damping**: Dampens velocities over time to stabilize the layout naturally.
+
+#### Relations (Edges) Model
+- **Explicit Links**: Generated by parsing the body or title of node A for `#XXXX` references or the `[[#XXXX]]` pattern. An arrowhead represents the direction.
+- **Tag Links**: Soft, toggleable dashed connections drawn between any two nodes sharing at least one tag.
+
+---
+
+### Steps
+
+#### Phase 1: Models & DB Migration
+1. **models.py**: Update `BucketEnum` values to `GOAL`, `NOTE`, `TASK`, `ISSUE` and adjust model metadata default references.
+2. **store.py**:
+   - Run active DB update commands inside `_init_db` to migrate any existing records from old codes to new values automatically.
+   - Update `BucketEnum` references in the store queries.
+
+#### Phase 2: Backend LLM Classification & RAG Synthesis
+3. **llm.py**:
+   - Rewrite the prompt in `classify_and_tag_entry` to direct the LLM to classify items into the updated enums (`GOAL`, `NOTE`, `TASK`, `ISSUE`) and generate metadata tags.
+   - Refactor the system prompt inside `summarize_backlog` and the general system helper.
+4. **main.py**:
+   - Refactor the `/chat` route to use a Karpathy-style search matching strategy (query FTS5 index + query matching tags + chronological notes) to supply the LLM with relevant context.
+   - Standardize fallback categorizations.
+
+#### Phase 3: Frontend Refactoring & Layout Setup
+5. **index.html**:
+   - Replace user guides, markdown help modal, welcome bubbles, and inline examples to reference the new categories.
+   - Update the "Backlog Allocation" visual meters to display the generalist categories.
+   - Add a sleek view toggle button in the desktop header to let users swap viewports.
+   - Create a container element `#graphPane` containing the absolute-positioned interactive `<canvas id="knowledgeGraphCanvas">` and a control dashboard widget.
+6. **app.js**:
+   - Adjust JS state constants (`currentBucket`, default quick-add arrays, metrics updater bar styles mapping).
+   - Implement the parsing engine of double brackets and hashtag links.
+
+#### Phase 4: HTML5 Canvas Graph Physics Implementation
+7. **app.js**:
+   - Implement the complete physics-simulation engine: node/edge extraction, physics loops, force calculators, drag/hover tracking, zoom/pan transforms, and high-performance painting.
+   - Connect click/double-click triggers to interact with items (double-clicking a node toggles view back to chat and triggers a search filter for that note).
+
+#### Phase 5: Verification & Validation
+8. **test_api.py** & **test_store.py**: Refactor tests asserting legacy bucket terminology to instead utilize the new product-driven buckets, and verify the model integrations.
+9. Execute automated test suites and validate frontend layout.
+
+---
+
+### Relevant files
+- **models.py** — Update `BucketEnum` definition to support generalist categories.
+- **store.py** — Implement inline SQLite schema migration mapping legacy bucket values during `_init_db`.
+- **llm.py** — Refactor prompts inside `classify_and_tag_entry` to instruct the LLM on classification criteria for these buckets.
+- **main.py** — Redesign `/chat` query context assembly to query database search index for RAG.
+- **index.html** — Redesign instructions, layout, charts, and inject the canvas viewport.
+- **app.js** — Implement physics loop, graph visual representation, interactive listeners, and coordinate conversions.
+- **test_api.py** — Refactor api test cases and assert counts.
+- **test_store.py** — Update assertions for enums to verify database lifecycle.
+
+---
+
+### Verification
+1. Run local automatic test runs using `pytest` to verify API and Storage lifecycles with the updated enums.
+2. Manually test adding notes using the chat input console (e.g., `GOAL | Release alpha program | alpha | Test deployment`) and verify correctness of auto-classification.
+3. Toggle to the Knowledge Graph view, verify nodes render with accurate colors matching their bucket allocations, drag nodes, and hover to see metadata tooltip popups.
+4. Double-click on any node to verify it takes the user back to the chat feed and filters to show only that item.
+
+---
+
+### Decisions
+- **Includes**: Generalist terminology migration, auto-migrations on DB start, physics-based canvas graph implementation, FTS5-based Karpathy-style contextual chat RAG, and inline link highlighting.
+- **Excludes**: Creating multi-database workspaces or third-party web cloud hosting for the knowledge map (we preserve 100% offline, speed-first single file architecture).
+
+---
+
+Please review this plan. Let me know if you would like any modifications before we proceed!

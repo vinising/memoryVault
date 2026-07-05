@@ -1,0 +1,11 @@
+Add more knowledge allocation like : Events, Reminders, Journal.
+    Allow users to add their own custom ones.
+    Allow users to create their own template / structure that fills a base line like for journal : Today's date , What I did today, What I will do tomorrow etc (this is an example, don't encode this, but today's date is very obvious for journals.)
+"Search" button just enabled the same "chat" window, not very intuitive. 
+The "filter by tags" will get bloated very fast. Allow users to type there own keywords seperated by comma, for each of those keywords/tags we shall do semantic search to give them the related notes, sorted by the most recent ones (user can define the sort as well)
+checklist - List of items to cover
+Notes used as reminders or to track something, sometimes in tandem with calendars
+Use notes to scribble random thoghts, ideas, poetries, 
+used as quick notes for passwords or improtant userids 
+used as maintaining petty expenses or ledger baalances
+save addresses, medicine names, movies list, reading list tracker
