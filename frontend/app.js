@@ -670,6 +670,9 @@ async function refreshTraces() {
                 const safePrompt = escapeHtml(t.prompt || "");
                 const safeResponse = escapeHtml(t.response || "");
                 html += `
+                const safePrompt = escapeHtml(t.prompt || "");
+                const safeResponse = escapeHtml(t.response || "");
+                html += `
                     <details class="group rounded-lg border border-gray-700/60 bg-gray-800/60 font-sans overflow-hidden">
                         <summary class="cursor-pointer list-none px-2.5 py-2 flex justify-between items-center gap-2 text-3xs font-semibold">
                             <span class="px-1.5 py-0.5 rounded font-mono ${modelBadgeColor}">${t.model_used}</span>
