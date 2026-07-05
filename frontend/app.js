@@ -1111,127 +1111,67 @@ function renderFilteredTimeline() {
     
     let html = "";
     
-    for (const [groupName, groupEntries] of Object.entries(groups)) {
-        if (groupEntries.length === 0) continue;
-        
-        // Date Divider
-        html += `
-            <div class="relative -ml-[31px] mb-6 flex items-center space-x-2">
-                <div class="w-4 h-4 rounded-full bg-blue-500 border-4 border-gray-950 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/15 animate-pulse"></div>
-                <span class="text-xs font-black uppercase tracking-widest text-blue-400 bg-blue-500/5 px-2.5 py-1 rounded-md border border-blue-500/10 shrink-0 font-mono">\s1</span>
-                <hr class="flex-1 border-gray-800/80 border-dashed" />
-            </div>
-        `.replace("\s1", groupName);
-        
-        groupEntries.forEach(entry => {
-            const timestampObj = new Date(entry.timestamp);
-            const formattedTimeStr = timestampObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " — " + timestampObj.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+            for (const [groupName, groupEntries] of Object.entries(groups)) {
+            if (groupEntries.length === 0) continue;
             
-            const labelColor = entry.bucket === 'GOAL' ? 'border-purple-500/20 bg-purple-500/5 text-purple-400' : (entry.bucket === 'NOTE' ? 'border-blue-500/20 bg-blue-500/5 text-blue-400' : (entry.bucket === 'TASK' ? 'border-yellow-500/20 bg-yellow-500/5 text-yellow-400' : 'border-red-500/20 bg-red-500/5 text-red-400'));
-            const stripeColor = entry.bucket === 'GOAL' ? 'border-purple-500' : (entry.bucket === 'NOTE' ? 'border-blue-500' : (entry.bucket === 'TASK' ? 'border-yellow-500' : 'border-red-500'));
-            const badgeClass = getStatusClass(entry.status);
-            
-            let tagBadges = "";
-            if (entry.tags) {
-                tagBadges = entry.tags.split(",").map(t => `<span class="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-3xs font-bold border border-gray-850">#${t.trim()}</span>`).join(" ");
-            }
-
-            let attachmentHtml = "";
-            if (entry.attachments && entry.attachments.length > 0) {
-                attachmentHtml = `<div class="mt-2.5 space-y-2 border-t border-gray-800/40 pt-2.5">`;
-                entry.attachments.forEach(att => {
-                    const isImg = att.mime_type.startsWith("image/");
-                    if (isImg) {
-                        attachmentHtml += `
-                            <div class="relative group max-w-full overflow-hidden rounded-xl border border-gray-800 mt-2">
-                                <img src="${att.url}" alt="${att.filename}" class="w-full max-h-48 object-cover rounded-xl hover:opacity-90 transition cursor-zoom-in" onclick="window.open('${att.url}', '_blank')">
-                                <div class="absolute bottom-2 left-2 bg-black/75 backdrop-blur-sm text-3xs font-mono text-gray-300 px-2 py-0.5 rounded border border-gray-800 tracking-wide">${att.filename} (${(att.size / 1024).toFixed(1)} KB)</div>
-                            </div>
-                        `;
-                    } else {
-                        attachmentHtml += `
-                            <a href="${att.url}" target="_blank" class="flex items-center space-x-2 bg-gray-850 hover:bg-gray-850 border border-gray-800 rounded-xl p-2 text-2xs md:text-xs text-gray-300 transition shrink-0 mt-2">
-                                <i class="fa-solid fa-file-arrow-down text-blue-400 text-sm"></i>
-                                <span class="truncate font-semibold flex-1 leading-snug" title="${att.filename}">${att.filename}</span>
-                                <span class="text-3xs font-mono text-gray-500">${(att.size / 1024).toFixed(1)} KB</span>
-                            </a>
-                        `;
-                    }
-                });
-                attachmentHtml += `</div>`;
-            }
-            
+            // Subtle Date Divider
             html += `
-                <div class="relative pl-5 group">
-                    <!-- Node Dot -->
-                    <div class="absolute left-0 top-6 w-3 h-3 rounded-full bg-gray-800 border-2 border-gray-950 group-hover:bg-blue-500 transition duration-300"></div>
-                    
-                    <!-- Entry Card -->
-                    <div class="bg-gray-900/60 hover:bg-gray-900 border ${stripeColor} border-l-4 rounded-2xl p-4 shadow-md transition duration-300 hover:border-gray-500/30">
-                        <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-gray-800 text-2xs">
+                <div class="mb-4 mt-8 first:mt-0 flex items-center px-2">
+                    <span class="text-sm font-bold text-white tracking-wide shrink-0">\${groupName}</span>
+                </div>
+            `;
+            
+            html += `<div class="space-y-4">`;
+            
+            groupEntries.forEach(entry => {
+                const dt = new Date(entry.timestamp);
+                const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                let borderColor = "border-gray-800";
+                let badgeColor = "bg-gray-800 text-gray-400";
+                
+                if (entry.bucket === 'GOAL') { borderColor = "border-purple-500/30"; badgeColor = "bg-purple-500/15 text-purple-400"; }
+                else if (entry.bucket === 'NOTE') { borderColor = "border-blue-500/30"; badgeColor = "bg-blue-500/15 text-blue-400"; }
+                else if (entry.bucket === 'TASK') { borderColor = "border-yellow-500/30"; badgeColor = "bg-yellow-500/15 text-yellow-400"; }
+                else if (entry.bucket === 'ISSUE') { borderColor = "border-red-500/30"; badgeColor = "bg-red-500/15 text-red-400"; }
+                
+                const safeDesc = escapeHtml(entry.description || "");
+                const mdDesc = parseDoubleBracketsInHTML(parseMiniMarkdown(safeDesc));
+                
+                let tagsHtml = "";
+                if (entry.tags) {
+                    const tagArr = entry.tags.split(",").map(t => t.trim()).filter(Boolean);
+                    if (tagArr.length > 0) {
+                        tagsHtml = `<div class="flex flex-wrap gap-1 mt-3">` + 
+                            tagArr.map(t => `<span class="bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full text-3xs font-medium text-gray-400 shrink-0">#\${t}</span>`).join("") +
+                            `</div>`;
+                    }
+                }
+                
+                html += `
+                    <div class="bg-gray-900 border \${borderColor} rounded-[20px] p-5 shadow-sm transform transition duration-300 hover:scale-[1.01] hover:shadow-md cursor-pointer flex flex-col group" onclick="snapFocusToNote('\${entry.id}')">
+                        <div class="flex justify-between items-start mb-2">
                             <div class="flex items-center space-x-2">
-                                <span class="font-extrabold text-white text-sm font-mono">${entry.id}</span>
-                                <span class="px-2 py-0.5 rounded-md border font-extrabold tracking-wide uppercase ${labelColor}">${entry.bucket}</span>
-                                <span class="text-gray-500 font-mono">\s2</span>
+                                <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full \${badgeColor}">\${entry.bucket}</span>
+                                <span class="text-xs text-gray-500 font-medium">\${timeStr}</span>
                             </div>
-                            <span class="text-2xs px-2.5 py-0.5 rounded-full font-extrabold \s3">\s4</span>
+                            <span class="text-3xs rounded px-1.5 py-0.5 border border-gray-800 text-gray-500 font-mono">\${entry.id}</span>
                         </div>
-                        
-                        <h4 class="font-bold text-gray-100 text-sm mb-1">\s5</h4>
-                        
-                        \s6
-                        
-                        \s7
-
-                        \s8
-                        
-                        <!-- Inline Controls inside Timeline node -->
-                        <div class="flex space-x-1.5 pt-2 border-t border-gray-800/40 text-3xs">
-                            <button onclick="updateEntryStatusAsync('${entry.id}', 'in-progress')" class="px-1.5 py-0.5 bg-blue-500/10 border border-blue-400/20 text-blue-400 font-bold hover:bg-blue-500 hover:text-white rounded text-3xs transition">In Progress</button>
-                            <button onclick="updateEntryStatusAsync('${entry.id}', 'done')" class="px-1.5 py-0.5 bg-green-500/10 border border-green-400/20 text-green-400 font-bold hover:bg-green-500 hover:text-white rounded text-3xs transition">Completed</button>
-                            <button onclick="updateEntryStatusAsync('${entry.id}', 'archived')" class="px-1.5 py-0.5 bg-gray-850 border border-gray-700 text-gray-400 font-semibold hover:bg-gray-700 hover:text-white rounded text-3xs transition">Archive</button>
+                        <h3 class="text-base font-bold text-white mb-1.5 line-clamp-2">\${escapeHtml(entry.title)}</h3>
+                        \${mdDesc ? `<div class="text-sm text-gray-400 line-clamp-3 leading-relaxed">\${mdDesc}</div>` : ''}
+                        \${tagsHtml}
+                        <div class="mt-3 flex items-center">
+                            <i class="fa-solid fa-chevron-right text-gray-700 group-hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100 text-xs"></i>
                         </div>
                     </div>
-                </div>
-            `
-            .replace("\s2", formattedTimeStr)
-            .replace("\s3", badgeClass)
-            .replace("\s4", entry.status.toUpperCase())
-            .replace("\s5", entry.title)
-            .replace("\s6", entry.description ? `<p class="text-xs text-gray-400 leading-normal italic pl-2.5 border-l-2 border-gray-700 mb-2.5 mt-1">${parseDoubleBracketsInHTML(entry.description)}</p>` : '')
-            .replace("\s7", tagBadges ? `<div class="flex flex-wrap gap-1.5 mb-3">${tagBadges}</div>` : '')
-            .replace("\s8", attachmentHtml);
-
-            // Render sub-tasks indented below this parent entry
-            const children = childrenMap[entry.id];
-            if (children && children.length > 0) {
-                html += `<div class="ml-6 mt-1 mb-3 space-y-1.5 border-l-2 border-gray-800/50 pl-3">`;
-                children.forEach(child => {
-                    const childBadge = getStatusClass(child.status);
-                    html += `
-                        <div class="bg-gray-900/40 border border-gray-800/60 rounded-xl p-3">
-                            <div class="flex items-center justify-between mb-1">
-                                <div class="flex items-center space-x-2">
-                                    <span class="font-mono text-2xs font-bold text-gray-500">${child.id}</span>
-                                    <span class="text-3xs text-gray-600">└ subtask</span>
-                                </div>
-                                <span class="px-2 py-0.5 rounded-full text-3xs font-extrabold ${childBadge}">${child.status.toUpperCase()}</span>
-                            </div>
-                            <p class="text-gray-200 font-semibold text-xs mb-2">${child.title}</p>
-                            <div class="flex space-x-1.5 text-3xs">
-                                <button onclick="updateEntryStatusAsync('${child.id}', 'in-progress')" class="px-1.5 py-0.5 bg-blue-500/10 border border-blue-400/20 text-blue-400 font-bold hover:bg-blue-500 hover:text-white rounded transition">In Progress</button>
-                                <button onclick="updateEntryStatusAsync('${child.id}', 'done')" class="px-1.5 py-0.5 bg-green-500/10 border border-green-400/20 text-green-400 font-bold hover:bg-green-500 hover:text-white rounded transition">Done</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                html += `</div>`;
-            }
-        });
+                `;
+            });
+            html += `</div>`;
+        }
+        
+        timelineContainer.innerHTML = html;
+        if (timelineTotalCount) timelineTotalCount.textContent = entries.length;
     }
-    
-    timelineContainer.innerHTML = html;
-}
 
 // Separate helper for async updates inside the Timeline view with immediate table refresh
 async function updateEntryStatusAsync(id, newStatus) {
@@ -2186,7 +2126,9 @@ function populateNodeDetailsWidget(node) {
     
     details.classList.remove("hidden");
     
-    title.innerText = `${node.id}: ${node.title}`;
+    title.innerText = node.title;
+    const detailIdEl = document.getElementById('nodeDetailsId');
+    if (detailIdEl) detailIdEl.innerText = node.id;
     desc.textContent = toPlainTextPreview(node.description || "No description detailed.");
     
     badge.innerText = node.bucket;
