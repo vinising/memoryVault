@@ -96,11 +96,11 @@
     <div class="flex-1 flex overflow-hidden">
         
         <!-- Left Control & Metrics Sidebar Panel -->
-        <aside id="sidebar" class="mobile-sidebar md:transform-none fixed md:relative h-full w-80 sidebar flex flex-col shrink-0">
+                <aside id="sidebar" class="mobile-sidebar md:transform-none fixed md:relative h-full w-80 sidebar flex flex-col shrink-0">
             <!-- Sidebar Header For Desktop -->
             <div class="hidden md:flex items-center justify-between p-5 border-b border-gray-800">
                 <div class="flex items-center space-x-3">
-                    <div class="bg-blue-600/10 p-2 rounded-lg border border-blue-500/20">
+                    <div class="bg-blue-600/10 p-2 rounded-xl border border-blue-500/20">
                         <i class="fa-solid fa-vault text-blue-500 text-xl"></i>
                     </div>
                     <div>
@@ -108,7 +108,7 @@
                         <p class="text-xs text-gray-400">Backlog Chat Assistant</p>
                     </div>
                 </div>
-                <div id="connectionStatus" class="flex items-center space-x-1.5 px-2 py-1 bg-green-500/15 border border-green-500/30 text-green-500 text-xs rounded-full">
+                <div id="connectionStatus" class="flex items-center space-x-1.5 px-2 py-1 bg-green-500/15 border border-green-500/30 text-green-500 text-xs rounded-full shadow-sm">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                     <span>Online</span>
                 </div>
@@ -119,76 +119,98 @@
                 
                 <!-- Backlog Metrics Widget -->
                 <div>
-                     <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Workspace Pulse</h2>
-                     <div class="grid grid-cols-2 gap-3">
-                          <div class="bg-gray-800/40 border border-gray-700/50 rounded-xl p-3 text-center transition-all duration-300 hover:border-gray-600">
-                              <div id="statTotal" class="text-2xl font-bold text-white">0</div>
-                              <div class="text-xs text-gray-400 mt-1">Total Logs</div>
+                     <h2 class="text-xs font-bold text-gray-500 tracking-wide mb-3 flex items-center space-x-1.5">
+                         <i class="fa-solid fa-wave-square"></i>
+                         <span>Workspace Pulse</span>
+                     </h2>
+                     <div class="grid grid-cols-2 gap-2">
+                          <div class="bg-gray-800/20 rounded-[20px] p-4 text-center transition-all hover:bg-gray-800/40">
+                              <div id="statTotal" class="text-2xl font-extrabold text-white">0</div>
+                              <div class="text-xs text-gray-400 mt-1 font-medium">Total Logs</div>
                           </div>
-                          <div class="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center transition-all duration-300 hover:border-blue-500/40">
-                              <div id="statProgress" class="text-2xl font-bold text-blue-400">0</div>
-                              <div class="text-xs text-blue-400 mt-1">In Progress</div>
+                          <div class="bg-blue-500/5 rounded-[20px] p-4 text-center transition-all hover:bg-blue-500/10">
+                              <div id="statProgress" class="text-2xl font-extrabold text-blue-400">0</div>
+                              <div class="text-xs text-blue-400 mt-1 font-medium">In Progress</div>
                           </div>
-                          <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-center transition-all duration-300 hover:border-yellow-500/40">
-                              <div id="statOpen" class="text-2xl font-bold text-yellow-400">0</div>
-                              <div class="text-xs text-yellow-400 mt-1">Open Tasks</div>
+                          <div class="bg-yellow-500/5 rounded-[20px] p-4 text-center transition-all hover:bg-yellow-500/10">
+                              <div id="statOpen" class="text-2xl font-extrabold text-yellow-400">0</div>
+                              <div class="text-xs text-yellow-400 mt-1 font-medium">Open Tasks</div>
                           </div>
-                          <div class="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-center transition-all duration-300 hover:border-green-500/40">
-                              <div id="statDone" class="text-2xl font-bold text-green-400">0</div>
-                              <div class="text-xs text-green-400 mt-1">Done</div>
+                          <div class="bg-green-500/5 rounded-[20px] p-4 text-center transition-all hover:bg-green-500/10">
+                              <div id="statDone" class="text-2xl font-extrabold text-green-400">0</div>
+                              <div class="text-xs text-green-400 mt-1 font-medium">Completed</div>
                           </div>
                      </div>
                 </div>
 
                 <!-- Category Visual Charts Wrapper -->
                 <div>
-                    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Knowledge Allocation</h2>
-                    <div id="allocationBarsContainer" class="bg-gray-800/20 border border-gray-800 p-4 rounded-xl space-y-3">
+                    <h2 class="text-xs font-bold text-gray-500 tracking-wide mb-3 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Knowledge Allocation</span>
+                    </h2>
+                    <div id="allocationBarsContainer" class="bg-gray-800/20 p-4 rounded-[24px] space-y-4">
                         <!-- Dynamically populated from API in app.js -->
                     </div>
                 </div>
 
-                <!-- Keyboard Shortcuts Panel -->
-                <div class="hidden sm:block">
-                    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Shortcuts</h2>
-                    <div class="text-xs space-y-1.5 text-gray-400 bg-gray-900/60 p-3.5 border border-gray-800/80 rounded-xl font-mono">
-                        <div class="flex justify-between"><span>Focus Input</span><span class="text-blue-400"><kbd class="bg-gray-800 px-1 py-0.5 rounded border border-gray-700">/</kbd></span></div>
-                        <div class="flex justify-between"><span>Search Dialog</span><span class="text-blue-400"><kbd class="bg-gray-800 px-1 py-0.5 rounded border border-gray-700">Ctrl+K</kbd></span></div>
-                        <div class="flex justify-between"><span>List Recent</span><span class="text-blue-400"><kbd class="bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700">Enter</kbd></span></div>
-                    </div>
-                </div>
+                <!-- Collapsible Settings & Dev Tools -->
+                <details class="group bg-gray-800/20 rounded-[24px] overflow-hidden transition-all duration-300">
+                    <summary class="p-4 cursor-pointer flex justify-between items-center text-sm font-semibold text-gray-300 focus:outline-none">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-sliders text-gray-500"></i>
+                            <span>Settings & Dev Tools</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-down text-gray-500 transition-transform duration-300 group-open:rotate-180"></i>
+                    </summary>
+                    <div class="p-4 pt-0 space-y-6">
+                        
+                        <!-- Keyboard Shortcuts -->
+                        <div class="hidden sm:block">
+                            <h3 class="text-xs font-semibold text-gray-400 mb-2">Shortcuts</h3>
+                            <div class="text-xs space-y-1.5 text-gray-400 bg-gray-900/60 p-3 rounded-xl font-mono">
+                                <div class="flex justify-between"><span>Focus Input</span><span class="text-blue-400"><kbd class="bg-gray-800 px-1 py-0.5 rounded border border-gray-700">/</kbd></span></div>
+                                <div class="flex justify-between"><span>Search Dialog</span><span class="text-blue-400"><kbd class="bg-gray-800 px-1 py-0.5 rounded border border-gray-700">Ctrl+K</kbd></span></div>
+                                <div class="flex justify-between"><span>List Recent</span><span class="text-blue-400"><kbd class="bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700">Enter</kbd></span></div>
+                            </div>
+                        </div>
 
-                <!-- LLM Routing Traces Panel -->
-                <div>
-                     <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">LLM Offline Engine Traces</h2>
-                     <div id="tracesContainer" class="text-xs space-y-2.5 max-h-56 overflow-y-auto bg-gray-900/40 p-3 rounded-lg border border-gray-800/80 text-gray-400 break-words">
-                          <p class="text-center italic py-2">No trace matches found</p>
-                     </div>
-                </div>
+                        <!-- Data Export/Import -->
+                        <div>
+                            <h3 class="text-xs font-semibold text-gray-400 mb-2">Data Management</h3>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <button id="exportCsvBtn" class="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl transition">
+                                    <i class="fa-solid fa-file-csv"></i> <span>CSV</span>
+                                </button>
+                                <button id="exportBtn" class="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl transition">
+                                    <i class="fa-solid fa-download"></i> <span>JSON</span>
+                                </button>
+                            </div>
+                            <button id="importBtn" class="w-full flex items-center justify-center space-x-1.5 py-2 px-3 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl transition">
+                                <i class="fa-solid fa-upload"></i> <span>Import Backup</span>
+                            </button>
+                            <input type="file" id="importFile" class="hidden" accept=".json">
+                        </div>
+
+                        <!-- LLM Traces -->
+                        <div>
+                            <h3 class="text-xs font-semibold text-gray-400 mb-2">Engine Traces</h3>
+                            <div id="tracesContainer" class="text-2xs space-y-2.5 max-h-48 overflow-y-auto bg-gray-900/60 p-3 rounded-xl text-gray-400 break-words font-mono">
+                                <p class="text-center italic py-2">No trace matches found</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </details>
 
             </div>
 
-            <!-- Bottom Static Control Actions (PWA triggers, Exports, Imports) -->
-            <div class="p-4 border-t border-gray-800 space-y-2 bg-gray-950 shrink-0">
-                <button id="pwaInstallBtn" class="hidden w-full flex items-center justify-center space-x-2 py-2 px-3 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-lg shadow-sm transition">
+            <!-- Install PWA button (hidden usually) -->
+            <div id="pwaInstallContainer" class="hidden p-4 border-t border-gray-800 shrink-0">
+                <button id="pwaInstallBtn" class="w-full flex items-center justify-center space-x-2 py-2 px-3 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-md transition">
                     <i class="fa-solid fa-cloud-arrow-down"></i>
                     <span>Install MemoryVault PWA</span>
                 </button>
-                <div class="grid grid-cols-2 gap-2">
-                    <button id="exportCsvBtn" class="flex items-center justify-center space-x-2 py-2 px-3 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-lg transition">
-                        <i class="fa-solid fa-file-csv"></i>
-                        <span>Export CSV</span>
-                    </button>
-                    <button id="exportBtn" class="flex items-center justify-center space-x-2 py-2 px-3 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-lg transition">
-                        <i class="fa-solid fa-download"></i>
-                        <span>Export JSON</span>
-                    </button>
-                </div>
-                <button id="importBtn" class="w-full flex items-center justify-center space-x-2 py-2 px-3 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-lg transition">
-                    <i class="fa-solid fa-upload"></i>
-                    <span>Import JSON Backup</span>
-                </button>
-                <input type="file" id="importFile" class="hidden" accept=".json">
             </div>
         </aside>
 
@@ -247,78 +269,25 @@
             </section>
 
             <!-- Continuous Timeline Pane -->
-            <section id="timelinePane" class="hidden flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-                <div class="max-w-4xl mx-auto">
-                    <div class="flex justify-between items-center mb-6">
+                        <!-- Continuous Timeline Pane -->
+            <section id="timelinePane" class="hidden flex-1 overflow-y-auto p-4 md:p-6 bg-gray-950">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <div class="flex justify-between items-center mb-4 px-2">
                         <div>
-                            <h2 class="text-lg font-bold text-white flex items-center space-x-2">
-                                <i class="fa-solid fa-clock-rotate-left text-blue-400"></i>
-                                <span>Continuous Ideation & Note Timeline</span>
+                            <h2 class="text-xl font-extrabold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-clock-rotate-left text-blue-500"></i>
+                                <span>Note Timeline</span>
                             </h2>
-                            <p class="text-xs text-gray-400 mt-1">A real-time chronological stream of all your goals, notes, tasks, and obstacles.</p>
+                            <p class="text-sm text-gray-400 mt-1 font-medium">Your chronological journal of ideas, tasks, and goals.</p>
                         </div>
-                        <div class="flex items-center space-x-2 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800 text-xs">
-                            <span class="text-gray-400">Total Stream Count:</span>
+                        <div class="flex items-center space-x-2 bg-gray-900/60 px-3 py-1.5 rounded-full border border-gray-800 text-xs">
+                            <span class="text-gray-400 font-semibold">Total:</span>
                             <span id="timelineTotalCount" class="font-bold text-white">0</span>
                         </div>
                     </div>
-
-                    <!-- Inline Timeline Filters Panel -->
-                    <div id="timelineFilters" class="mb-6 bg-gray-900/40 p-4 border border-gray-800 rounded-2xl flex flex-col space-y-4 text-xs">
-                        
-                        <!-- Top filter row -->
-                        <div class="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center w-full">
-                            <!-- Status Pins Filter -->
-                            <div class="space-y-1.5">
-                                <span class="text-2xs text-gray-400 font-extrabold tracking-wider uppercase block">Filter by Status</span>
-                                <div class="flex flex-wrap gap-1.5" id="timelineStatusFilters">
-                                    <button type="button" onclick="selectTimelineStatusFilter('all')" class="status-filter-pill px-3 py-1 font-bold rounded-lg border border-blue-500/25 bg-blue-500/10 text-blue-400 transition" data-status="all">ALL</button>
-                                    <button type="button" onclick="selectTimelineStatusFilter('open')" class="status-filter-pill px-3 py-1 font-semibold rounded-lg border border-gray-800/80 bg-gray-900/40 text-gray-400 hover:text-white transition" data-status="open">OPEN</button>
-                                    <button type="button" onclick="selectTimelineStatusFilter('in-progress')" class="status-filter-pill px-3 py-1 font-semibold rounded-lg border border-gray-800/80 bg-gray-900/40 text-gray-400 hover:text-white transition" data-status="in-progress">IN PROGRESS</button>
-                                    <button type="button" onclick="selectTimelineStatusFilter('done')" class="status-filter-pill px-3 py-1 font-semibold rounded-lg border border-gray-800/80 bg-gray-900/40 text-gray-400 hover:text-white transition" data-status="done">DONE</button>
-                                    <button type="button" onclick="selectTimelineStatusFilter('archived')" class="status-filter-pill px-3 py-1 font-semibold rounded-lg border border-gray-800/80 bg-gray-900/40 text-gray-400 hover:text-white transition" data-status="archived">ARCHIVED</button>
-                                </div>
-                            </div>
-
-                            <!-- Tag Cloud Filters -->
-                            <div class="space-y-1.5 flex-1 md:max-w-md w-full">
-                                <span class="text-2xs text-gray-400 font-extrabold tracking-wider uppercase block">Quick Tag Filters (Intersection)</span>
-                                <div class="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto" id="timelineTagFilters">
-                                    <span class="text-[10px] text-gray-500 italic">No tags in timeline items</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr class="border-gray-800/60" />
-
-                        <!-- Keyword Input & Sorting Controls -->
-                        <div class="flex flex-col sm:flex-row gap-3 items-end w-full">
-                            <div class="flex-1 space-y-1.5 w-full">
-                                <label for="timelineSearchQuery" class="text-2xs text-gray-400 font-extrabold tracking-wider uppercase block">Semantic Query / Keyword Search (Separate tags by comma)</label>
-                                <div class="flex space-x-2">
-                                    <input type="text" id="timelineSearchQuery" placeholder="e.g. auth, api, token..." class="w-full bg-gray-800 border border-gray-750 px-3 py-2 text-white placeholder-gray-500 text-xs rounded-xl focus:outline-none focus:border-blue-500 transition">
-                                    <button type="button" onclick="triggerTimelineSearch()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition shadow active:scale-95 shrink-0 flex items-center space-x-1.5">
-                                        <i class="fa-solid fa-magnifying-glass"></i>
-                                        <span>Search</span>
-                                    </button>
-                                    <button type="button" onclick="clearTimelineSearch()" class="px-3 py-2 bg-gray-800 hover:bg-gray-750 text-gray-400 hover:text-white rounded-xl transition shrink-0">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="space-y-1.5 shrink-0 w-full sm:w-44">
-                                <label for="timelineSortOrder" class="text-2xs text-gray-400 font-extrabold tracking-wider uppercase block">Sort Order</label>
-                                <select id="timelineSortOrder" onchange="triggerTimelineSearch()" class="w-full bg-gray-800 border border-gray-750 px-3 py-2 text-white text-xs rounded-xl focus:outline-none focus:border-blue-500 transition h-10">
-                                    <option value="recency">Most Recent (Date)</option>
-                                    <option value="relevance">Highly Relevant (Matches)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                    </div>
                     
-                    <!-- Vertical Timeline Track -->
-                    <div id="timelineContainer" class="relative pl-6 border-l-2 border-gray-800 space-y-8">
+                    <!-- Soft Journal Timeline Track -->
+                    <div id="timelineContainer" class="relative space-y-6 pb-20">
                         <!-- Loaded dynamically in app.js -->
                         <div class="text-center italic text-gray-500 py-12">Checking timeline logs...</div>
                     </div>
@@ -326,52 +295,49 @@
             </section>
 
             <!-- Knowledge Graph Pane -->
+                        <!-- Knowledge Graph Pane -->
             <section id="graphPane" class="hidden flex-1 h-full w-full relative">
                 <!-- Floating canvas for force-directed rendering -->
                 <canvas id="knowledgeGraphCanvas" class="w-full h-full block bg-gray-950 cursor-grab active:cursor-grabbing"></canvas>
                 
-                <!-- Floating Controls Overlay -->
-                <div class="absolute top-4 left-4 p-3 bg-gray-900/90 border border-gray-800 rounded-xl shadow-xl flex flex-col space-y-2.5 backdrop-blur-md max-w-[240px]">
-                    <span class="text-2xs font-extrabold text-blue-400 uppercase tracking-widest flex items-center space-x-1">
-                        <i class="fa-solid fa-circle-nodes text-xs animate-pulse"></i>
-                        <span>Graph Dashboard</span>
+                <!-- Minimalist Glassmorphic Toolbar (Bottom Centered) -->
+                <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 rounded-full px-4 py-2 shadow-2xl z-40 space-x-4">
+                    <span class="flex items-center text-gray-400 opacity-80 cursor-help" title="Knowledge Map Engine">
+                        <i class="fa-solid fa-circle-nodes text-lg"></i>
                     </span>
-                    <hr class="border-gray-800" />
-                    <!-- Toggle options -->
-                    <div class="flex items-center justify-between text-2xs font-bold text-gray-300 space-x-4">
-                        <span>Show tag connections</span>
-                        <input id="toggleTagLinks" type="checkbox" checked class="rounded bg-gray-800 border-gray-750 text-blue-500 focus:ring-0 cursor-pointer">
-                    </div>
-                    <!-- Actions -->
-                    <div class="grid grid-cols-2 gap-1.5 pt-1">
-                        <button id="recenterGraphBtn" type="button" class="flex items-center justify-center space-x-1 py-1 px-2 text-3xs font-extrabold bg-gray-800 hover:bg-gray-700 hover:text-white text-gray-300 border border-gray-700/80 rounded transition">
-                            <i class="fa-solid fa-crosshairs"></i>
-                            <span>Re-center</span>
-                        </button>
-                        <button id="resetGraphBtn" type="button" class="flex items-center justify-center space-x-1 py-1 px-2 text-3xs font-extrabold bg-gray-800 hover:bg-gray-700 hover:text-white text-gray-300 border border-gray-700/80 rounded transition">
-                            <i class="fa-solid fa-shuffle"></i>
-                            <span>Reset</span>
-                        </button>
-                    </div>
+                    <div class="w-px h-5 bg-gray-800"></div>
+                    
+                    <button id="recenterGraphBtn" type="button" class="text-gray-400 hover:text-white transition group outline-none" title="Re-center camera">
+                        <i class="fa-solid fa-crosshairs text-lg group-hover:scale-110 transition-transform"></i>
+                    </button>
+                    
+                    <button id="resetGraphBtn" type="button" class="text-gray-400 hover:text-white transition group outline-none" title="Reset physics layout">
+                        <i class="fa-solid fa-shuffle text-lg group-hover:scale-110 transition-transform"></i>
+                    </button>
+                    
+                    <div class="w-px h-5 bg-gray-800"></div>
+                    <label class="flex items-center cursor-pointer group" title="Toggle Tag Connections">
+                        <input id="toggleTagLinks" type="checkbox" checked class="peer sr-only">
+                        <i class="fa-solid fa-link text-lg text-gray-500 peer-checked:text-blue-500 group-hover:text-blue-400 transition-colors"></i>
+                    </label>
                 </div>
 
-                <!-- Floating Node Inspection Detail overlay (bottom right) -->
-                <div id="graphNodeDetails" class="hidden absolute bottom-4 right-4 max-w-sm w-85 bg-gray-900/95 border border-gray-800 p-4 rounded-xl shadow-2xl backdrop-blur-md text-xs space-y-2 z-40">
+                <!-- Floating Node Inspection Detail overlay (top right) -->
+                <div id="graphNodeDetails" class="hidden absolute top-6 right-6 max-w-sm w-85 bg-gray-900/90 backdrop-blur-xl border border-gray-800/80 p-5 rounded-[24px] shadow-2xl text-xs space-y-3 z-40">
                     <div class="flex justify-between items-start">
-                        <span id="nodeDetailsBadge" class="status-badge text-3xs px-2 py-0.5 rounded font-bold bg-blue-500 text-white">GOAL</span>
-                        <button id="closeNodeDetailsBtn" type="button" class="text-gray-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+                        <span id="nodeDetailsBadge" class="status-badge text-3xs px-2.5 py-1 rounded-full font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">GOAL</span>
+                        <button id="closeNodeDetailsBtn" type="button" class="text-gray-500 hover:text-white outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
                     </div>
-                    <h4 id="nodeDetailsTitle" class="font-extrabold text-white text-sm"></h4>
-                    <p id="nodeDetailsDesc" class="text-gray-300 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-wrap break-words"></p>
-                    <div id="nodeDetailsTags" class="flex flex-wrap gap-1 pt-1"></div>
-                    <hr class="border-gray-800 my-1" />
-                    <div class="flex justify-between items-center text-3xs text-gray-400">
-                        <div class="flex space-x-2">
-                            <button id="nodeDetailsEditBtn" type="button" class="text-blue-400 hover:text-blue-300 font-extrabold flex items-center space-x-1">
-                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                                <span>Go to Chat</span>
-                            </button>
-                        </div>
+                    <h4 id="nodeDetailsTitle" class="font-extrabold text-white text-base leading-tight"></h4>
+                    <p id="nodeDetailsDesc" class="text-gray-300 text-sm leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap break-words custom-scrollbar"></p>
+                    <div id="nodeDetailsTags" class="flex flex-wrap gap-1.5 pt-2"></div>
+                    <hr class="border-gray-800 my-2" />
+                    <div class="flex justify-between items-center bg-gray-950/50 -mx-5 -mb-5 px-5 py-3 rounded-b-[24px]">
+                        <span id="nodeDetailsId" class="font-mono text-gray-500 text-2xs font-bold">#0012</span>
+                        <button id="nodeDetailsEditBtn" type="button" class="text-blue-400 hover:text-white font-extrabold flex items-center space-x-1 outline-none text-xs transition-colors">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            <span>Snap & Edit</span>
+                        </button>
                     </div>
                 </div>
             </section>
