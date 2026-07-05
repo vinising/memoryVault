@@ -77,35 +77,34 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Auto-focus chat input field on '/' keypress
     document.addEventListener("keydown", (e) => {
-            data.traces.forEach(t => {
-                const isFail = t.status === "failed";
-                const modelBadgeColor = isFail ? "bg-red-500/10 text-red-400" : (t.model_used.includes("proxy") ? "bg-yellow-500/15 text-yellow-400" : "bg-blue-500/15 text-blue-400");
-                const cleanTime = t.timestamp.substring(11, 19);
-                const safePrompt = escapeHtml(t.prompt || "");
-                const safeResponse = escapeHtml(t.response || "");
-                html += `
-                    <details class="group rounded-lg border border-gray-700/60 bg-gray-800/60 font-sans overflow-hidden">
-                        <summary class="cursor-pointer list-none px-2.5 py-2 flex justify-between items-center gap-2 text-3xs font-semibold">
-                            <span class="px-1.5 py-0.5 rounded font-mono ${modelBadgeColor}">${t.model_used}</span>
-                            <span class="flex-1 min-w-0 truncate text-left text-gray-300">${safePrompt}</span>
-                            <span class="text-gray-500 shrink-0">${cleanTime}</span>
-                        </summary>
-                        <div class="border-t border-gray-700/60 px-2.5 py-2 space-y-2 text-3xs text-gray-300">
-                            <div>
-                                <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Prompt</div>
-                                <div class="whitespace-pre-wrap break-words max-h-28 overflow-y-auto pr-1">${safePrompt}</div>
-                            </div>
-                            <div>
-                                <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Response</div>
-                                <div class="whitespace-pre-wrap break-words max-h-28 overflow-y-auto pr-1">${safeResponse}</div>
-                            </div>
-                            <div class="flex justify-between text-3xs text-gray-500 font-mono pt-1 border-t border-gray-700/50">
-                                <span>Latency: ${t.latency_ms}ms</span>
-                                <span class="${isFail ? 'text-red-500' : 'text-green-500'} font-bold">${t.status.toUpperCase()}</span>
-                            </div>
-                        </div>
-                    </details>
-                `;
+        if (e.key === "/" && document.activeElement !== chatInput) {
+            e.preventDefault();
+            chatInput.focus();
+            chatInput.value = "";
+        }
+        // Cmd+K or Ctrl+K search triggers focus
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+            e.preventDefault();
+            chatInput.focus();
+            chatInput.value = "/search ";
+        }
+    });
+
+    // Custom Bucket Form submission listener
+    const customBucketForm = document.getElementById("customBucketForm");
+    if (customBucketForm) {
+        customBucketForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const nameField = document.getElementById("customBucketName");
+            const colorField = document.getElementById("customBucketColor");
+            const templateField = document.getElementById("customBucketTemplate");
+            
+            const name = nameField.value.trim().toUpperCase();
+            const color = colorField.value;
+            const template = templateField.value.trim() || null;
+            
+            if (!name) return;
+            
             try {
                 const res = await fetch(`${API_BASE}/buckets/add`, {
                     method: "POST",
@@ -174,6 +173,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 chatForm.dispatchEvent(new Event("submit"));
             }
         });
+        // Auto-resize textarea as user types or pastes content
+        chatInput.addEventListener("input", autoResizeChatInput);
     }
 
     // Wire up Attachment Paperclip click trigger
@@ -240,6 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }, 100);
             
             chatInput.value = "";
+            chatInput.style.height = "";
         });
     }
 
@@ -290,6 +292,13 @@ window.addEventListener("offline", () => {
     setNetworkState(true);
 });
 
+// Resize textarea to fit content; collapses back to single-row when cleared
+function autoResizeChatInput() {
+    if (!chatInput) return;
+    chatInput.style.height = "auto";
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 180) + "px";
+}
+
 // Form submission router
 chatForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -301,6 +310,7 @@ chatForm.addEventListener("submit", (e) => {
     }
 
     chatInput.value = "";
+    chatInput.style.height = "";
     processRawInput(rawText);
 });
 
@@ -325,22 +335,42 @@ function processRawInput(text) {
 }
 
 function parseEntryString(text) {
-    const parts = text.split("|").map(p => p.trim());
+    // Cap split at 3 pipes so description may safely contain | characters (e.g. markdown tables)
+    const raw = text.split("|");
+
+    // Extract optional parent:# reference from the last pipe segment
+    let parentId = null;
+    const lastSeg = (raw[raw.length - 1] || "").trim();
+    if (lastSeg.toLowerCase().startsWith("parent:") && raw.length > 1) {
+        parentId = lastSeg.slice(7).trim();
+        if (parentId && !parentId.startsWith("#")) parentId = `#${parentId}`;
+        raw.pop();
+    }
+
+    const parts = [
+        (raw[0] || "").trim(),
+        (raw[1] || "").trim(),
+        (raw[2] || "").trim(),
+        raw.slice(3).join("|").trim()
+    ];
     
-    // Check if the first token is a valid bucket value
-    const buckets = ["GOAL", "NOTE", "TASK", "ISSUE"];
+    // Check if the first token is a valid bucket value — use activeBuckets so custom/extended buckets are recognized
+    const allBucketNames = activeBuckets.length > 0
+        ? activeBuckets.map(b => b.name.toUpperCase())
+        : ["GOAL", "NOTE", "TASK", "ISSUE", "EVENT", "REMINDER", "JOURNAL"];
     const legacyMap = { "EPIC": "GOAL", "US": "NOTE", "TT": "TASK", "PT": "ISSUE" };
     let firstToken = parts[0].toUpperCase();
     if (legacyMap[firstToken]) {
         firstToken = legacyMap[firstToken];
     }
     
-    if (buckets.includes(firstToken)) {
+    if (allBucketNames.includes(firstToken)) {
         return {
             bucket: firstToken,
             title: parts[1] || "Untitled note",
             tags: parts[2] || "",
-            description: parts[3] || ""
+            description: parts[3] || "",
+            parent_id: parentId
         };
     } else {
         // Missing bucket. Return parsed fields with blank bucket
@@ -349,14 +379,16 @@ function parseEntryString(text) {
                 bucket: null,
                 title: parts[0] || "Untitled note",
                 tags: parts[1] || "",
-                description: parts[2] || ""
+                description: parts[2] || "",
+                parent_id: parentId
             };
         } else {
             return {
                 bucket: null,
                 title: text,
                 tags: "",
-                description: ""
+                description: "",
+                parent_id: null
             };
         }
     }
@@ -635,21 +667,23 @@ async function refreshTraces() {
                 const modelBadgeColor = isFail ? "bg-red-500/10 text-red-400" : (t.model_used.includes("proxy") ? "bg-yellow-500/15 text-yellow-400" : "bg-blue-500/15 text-blue-400");
                 const cleanTime = t.timestamp.substring(11, 19);
                 html += `
+                const safePrompt = escapeHtml(t.prompt || "");
+                const safeResponse = escapeHtml(t.response || "");
+                html += `
                     <details class="group rounded-lg border border-gray-700/60 bg-gray-800/60 font-sans overflow-hidden">
                         <summary class="cursor-pointer list-none px-2.5 py-2 flex justify-between items-center gap-2 text-3xs font-semibold">
                             <span class="px-1.5 py-0.5 rounded font-mono ${modelBadgeColor}">${t.model_used}</span>
-                            <span class="flex-1 min-w-0 truncate text-left text-gray-300">${t.prompt}</span>
+                            <span class="flex-1 min-w-0 truncate text-left text-gray-300">${safePrompt}</span>
                             <span class="text-gray-500 shrink-0">${cleanTime}</span>
                         </summary>
                         <div class="border-t border-gray-700/60 px-2.5 py-2 space-y-2 text-3xs text-gray-300">
                             <div>
                                 <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Prompt</div>
-                                <div class="whitespace-pre-wrap break-words max-h-28 overflow-y-auto pr-1">${t.prompt}</div>
+                                <div class="whitespace-pre-wrap break-words max-h-28 overflow-y-auto pr-1">${safePrompt}</div>
                             </div>
                             <div>
                                 <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Response</div>
-                                <div class="whitespace-pre-wrap break-words max-h-28 overflow-y-auto pr-1">${t.response}</div>
-                            </div>
+                                <div class="whitespace-pre-wrap break-words max-h-28 overflow-y-auto pr-1">${safeR
                             <div class="flex justify-between text-3xs text-gray-500 font-mono pt-1 border-t border-gray-700/50">
                                 <span>Latency: ${t.latency_ms}ms</span>
                                 <span class="${isFail ? 'text-red-500' : 'text-green-500'} font-bold">${t.status.toUpperCase()}</span>
@@ -869,17 +903,20 @@ async function triggerTimelineSearch() {
     const sort_by = sortOrderSelect ? sortOrderSelect.value : "recency";
     
     let finalQuery = "";
+    let searchMode = "keyword";
     if (rawVal) {
         if (rawVal.includes(",")) {
-            const tags = rawVal.split(",").map(t => t.trim()).filter(Boolean).join(",");
-            finalQuery = `tag:${tags}`;
+            // Comma-separated terms → natural language query for semantic embedding search
+            // Backend falls back to FTS5 OR if Ollama embedding model is unavailable
+            finalQuery = rawVal.split(",").map(t => t.trim()).filter(Boolean).join(" ");
+            searchMode = "semantic";
         } else {
             finalQuery = rawVal;
         }
     }
     
     try {
-        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(finalQuery)}&sort_by=${sort_by}`);
+        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(finalQuery)}&sort_by=${sort_by}&mode=${searchMode}`);
         if (res.ok) {
             const entries = await res.json();
             allTimelineEntries = entries;
@@ -1014,7 +1051,20 @@ function renderFilteredTimeline() {
         });
     }
 
-    if (timelineTotalCount) timelineTotalCount.textContent = filtered.length;
+    // Build parent→children map so sub-tasks are rendered indented below their parent
+    const childrenMap = {};
+    const childIds = new Set();
+    filtered.forEach(e => {
+        if (e.parent_id) {
+            if (!childrenMap[e.parent_id]) childrenMap[e.parent_id] = [];
+            childrenMap[e.parent_id].push(e);
+            childIds.add(e.id);
+        }
+    });
+    // Root entries: entries that are NOT sub-tasks of another entry
+    const rootFiltered = filtered.filter(e => !childIds.has(e.id));
+
+    if (timelineTotalCount) timelineTotalCount.textContent = rootFiltered.length;
     
     if (filtered.length === 0) {
         timelineContainer.innerHTML = `
@@ -1040,7 +1090,7 @@ function renderFilteredTimeline() {
     const startOfYesterday = startOfToday - (24 * 60 * 60 * 1000);
     const startOfSevenDaysAgo = startOfToday - (7 * 24 * 60 * 60 * 1000);
     
-    filtered.forEach(entry => {
+    rootFiltered.forEach(entry => {
         const entryDate = new Date(entry.timestamp);
         const entryTime = entryDate.getTime();
         
@@ -1147,6 +1197,32 @@ function renderFilteredTimeline() {
             .replace("\s6", entry.description ? `<p class="text-xs text-gray-400 leading-normal italic pl-2.5 border-l-2 border-gray-700 mb-2.5 mt-1">${parseDoubleBracketsInHTML(entry.description)}</p>` : '')
             .replace("\s7", tagBadges ? `<div class="flex flex-wrap gap-1.5 mb-3">${tagBadges}</div>` : '')
             .replace("\s8", attachmentHtml);
+
+            // Render sub-tasks indented below this parent entry
+            const children = childrenMap[entry.id];
+            if (children && children.length > 0) {
+                html += `<div class="ml-6 mt-1 mb-3 space-y-1.5 border-l-2 border-gray-800/50 pl-3">`;
+                children.forEach(child => {
+                    const childBadge = getStatusClass(child.status);
+                    html += `
+                        <div class="bg-gray-900/40 border border-gray-800/60 rounded-xl p-3">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-mono text-2xs font-bold text-gray-500">${child.id}</span>
+                                    <span class="text-3xs text-gray-600">└ subtask</span>
+                                </div>
+                                <span class="px-2 py-0.5 rounded-full text-3xs font-extrabold ${childBadge}">${child.status.toUpperCase()}</span>
+                            </div>
+                            <p class="text-gray-200 font-semibold text-xs mb-2">${child.title}</p>
+                            <div class="flex space-x-1.5 text-3xs">
+                                <button onclick="updateEntryStatusAsync('${child.id}', 'in-progress')" class="px-1.5 py-0.5 bg-blue-500/10 border border-blue-400/20 text-blue-400 font-bold hover:bg-blue-500 hover:text-white rounded transition">In Progress</button>
+                                <button onclick="updateEntryStatusAsync('${child.id}', 'done')" class="px-1.5 py-0.5 bg-green-500/10 border border-green-400/20 text-green-400 font-bold hover:bg-green-500 hover:text-white rounded transition">Done</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
         });
     }
     
@@ -1317,7 +1393,7 @@ function selectQuickBucket(bucket) {
             const populatedTemplate = match.template.replace(/\{\{DATE\}\}/g, formattedDate).replace(/\\n/g, "\n");
             
             chatInput.value = populatedTemplate;
-            // auto focus and auto size textarea nicely
+            autoResizeChatInput();
             chatInput.focus();
         }
     }
@@ -1485,27 +1561,27 @@ function parseMiniMarkdown(text) {
         .replace(/^## (.*$)/gim, '<h2 id="summaryHeader" class="text-lg font-bold text-white border-b border-gray-800 pb-1 mt-4 mb-2 flex items-center space-x-2"><i class="fa-solid fa-chart-line text-blue-400"></i><span>$1</span></h2>')
         .replace(/^# (.*$)/gim, '<h1 class="text-xl font-extrabold text-blue-400 mt-5 mb-2">$1</h1>')
         // Bold
-        .replace(/\\*\\*(.*?)\\*\\*/gim, '<strong class="text-white font-bold">$1</strong>')
+        .replace(/\*\*(.*?)\*\*/gim, '<strong class="text-white font-bold">$1</strong>')
         // Italic
-        .replace(/\\*(.*?)\\*/gim, '<em class="italic text-gray-350">$1</em>')
+        .replace(/\*(.*?)\*/gim, '<em class="italic text-gray-350">$1</em>')
         // Inline backticks
         .replace(/`(.*?)`/gim, '<code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">$1</code>')
         // Unordered lists
-        .replace(/^\\s*-\\s+(.*?)$/gim, '<li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed">$1</li>')
+        .replace(/^\s*-\s+(.*?)$/gim, '<li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed">$1</li>')
         // Linebreaks
-        .replace(/\\n/g, "<br>");
+        .replace(/\n/g, "<br>");
         
     return html;
 }
 
     function escapeHtml(text) {
-        return String(text)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-    }
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
     function toPlainTextPreview(text, maxLength = 280) {
         if (!text) return "No description available.";
@@ -1521,14 +1597,14 @@ function parseMiniMarkdown(text) {
 // Function to convert Obsidian-style [[#0012]] double bracket string links into clickable tags
 function parseDoubleBracketsInHTML(text) {
     if (!text) return "";
-    return text.replace(/\\\[\\\((#\\d{4})\\\)\\\]/g, (match, idStr) => {
+    return text.replace(/\[\((#\d{4})\)\]/g, (match, idStr) => {
         return `<span class="text-blue-400 hover:text-blue-300 underline font-semibold font-mono cursor-pointer transition active:scale-95" onclick="snapFocusToNote('${idStr}')">${idStr}</span>`;
-    }).replace(/\\\[\\\[(#\\d{4})\\\s*(.*?)\\\]\\\s*\\\]/g, (match, idStr) => {
+    }).replace(/\[\[(#\d{4})\s*(.*?)\]\]/g, (match, idStr) => {
         return `<span class="text-blue-400 hover:text-blue-300 underline font-semibold font-mono cursor-pointer transition active:scale-95" onclick="snapFocusToNote('${idStr}')">${idStr}</span>`;
-    }).replace(/\\\[\\\[(#\\d{4})\\\]\\\]/g, (match, idStr) => {
+    }).replace(/\[\[(#\d{4})\]\]/g, (match, idStr) => {
         return `<span class="text-blue-400 hover:text-blue-300 underline font-semibold font-mono cursor-pointer transition active:scale-95" onclick="snapFocusToNote('${idStr}')">${idStr}</span>`;
-    }).replace(/([^\w])(#\\d{4})\\b/g, (match, prefix, idStr) => {
-        return `${prefix}<span class="text-blue-400 hover:text-blue-300 underline font-semibold font-mono cursor-pointer transition active:scale-95" onclick="snapFocusToNote('\s9')">\s9</span>`.replace(/\s9/g, idStr);
+    }).replace(/([^\w])(#\d{4})\b/g, (match, prefix, idStr) => {
+        return `${prefix}<span class="text-blue-400 hover:text-blue-300 underline font-semibold font-mono cursor-pointer transition active:scale-95" onclick="snapFocusToNote('__ID__')">__ID__</span>`.replace(/__ID__/g, idStr);
     });
 }
 

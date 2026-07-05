@@ -145,6 +145,25 @@ def evaluate_and_generate(prompt: str, store: EntryStore) -> Tuple[str, str, int
     return response_text, "none/failed", latency_ms
 
 
+_EMBED_MODEL = "nomic-embed-text"
+
+def embed_text(text: str) -> list:
+    """
+    Returns a float32 embedding vector via Ollama /api/embeddings.
+    Returns an empty list if the embedding model is not installed or Ollama is offline.
+    """
+    try:
+        url = f"{OLLAMA_HOST}/api/embeddings"
+        with httpx.Client(timeout=8.0) as client:
+            res = client.post(url, json={"model": _EMBED_MODEL, "prompt": text[:2000]})
+            if res.status_code == 200:
+                return res.json().get("embedding", [])
+            print(f"[Embedding] Ollama returned {res.status_code} for model {_EMBED_MODEL}")
+    except Exception as e:
+        print(f"[Embedding] {_EMBED_MODEL} unavailable: {e}")
+    return []
+
+
 def summarize_backlog(entries_json: str, store: EntryStore) -> Tuple[str, str, int]:
     """
     Format standard backlog log metadata and request LLM summarization.
