@@ -58,10 +58,10 @@ const barPtQty = document.getElementById("barPtQty");
 const tracesContainer = document.getElementById("tracesContainer");
 
 // --- STARTUP LOGIC ---
-document.addEventListener("DOMContentLoaded", () => {
-    try { if (typeof renderExploreTagsCloud === 'function') renderExploreTagsCloud(); } catch(e){}
-    loadBuckets();
-    refreshMetrics();
+document.addEventListener("DOMContentLoaded", async () => {
+    try { if (typeof renderExploreTagsCloud === "function") renderExploreTagsCloud(); } catch(e){}
+    await loadBuckets();
+    // loadBuckets correctly triggers refreshMetrics once it resolves 
     refreshTraces();
     checkConnectionStatus();
     
@@ -670,9 +670,6 @@ async function refreshTraces() {
                 const safePrompt = escapeHtml(t.prompt || "");
                 const safeResponse = escapeHtml(t.response || "");
                 html += `
-                const safePrompt = escapeHtml(t.prompt || "");
-                const safeResponse = escapeHtml(t.response || "");
-                html += `
                     <details class="group rounded-lg border border-gray-700/60 bg-gray-800/60 font-sans overflow-hidden">
                         <summary class="cursor-pointer list-none px-2.5 py-2 flex justify-between items-center gap-2 text-3xs font-semibold">
                             <span class="px-1.5 py-0.5 rounded font-mono ${modelBadgeColor}">${t.model_used}</span>
@@ -1117,7 +1114,7 @@ function renderFilteredTimeline() {
             // Subtle Date Divider
             html += `
                 <div class="mb-4 mt-8 first:mt-0 flex items-center px-2">
-                    <span class="text-sm font-bold text-white tracking-wide shrink-0">\${groupName}</span>
+                    <span class="text-sm font-bold text-white tracking-wide shrink-0">${groupName}</span>
                 </div>
             `;
             
@@ -1143,23 +1140,23 @@ function renderFilteredTimeline() {
                     const tagArr = entry.tags.split(",").map(t => t.trim()).filter(Boolean);
                     if (tagArr.length > 0) {
                         tagsHtml = `<div class="flex flex-wrap gap-1 mt-3">` + 
-                            tagArr.map(t => `<span class="bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full text-3xs font-medium text-gray-400 shrink-0">#\${t}</span>`).join("") +
+                            tagArr.map(t => `<span class="bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full text-3xs font-medium text-gray-400 shrink-0">#${t}</span>`).join("") +
                             `</div>`;
                     }
                 }
                 
                 html += `
-                    <div class="bg-gray-900 border \${borderColor} rounded-[20px] p-5 shadow-sm transform transition duration-300 hover:scale-[1.01] hover:shadow-md cursor-pointer flex flex-col group" onclick="snapFocusToNote('\${entry.id}')">
+                    <div class="bg-gray-900 border ${borderColor} rounded-[20px] p-5 shadow-sm transform transition duration-300 hover:scale-[1.01] hover:shadow-md cursor-pointer flex flex-col group" onclick="snapFocusToNote('\${entry.id}')">
                         <div class="flex justify-between items-start mb-2">
                             <div class="flex items-center space-x-2">
-                                <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full \${badgeColor}">\${entry.bucket}</span>
-                                <span class="text-xs text-gray-500 font-medium">\${timeStr}</span>
+                                <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">\${entry.bucket}</span>
+                                <span class="text-xs text-gray-500 font-medium">${timeStr}</span>
                             </div>
                             <span class="text-3xs rounded px-1.5 py-0.5 border border-gray-800 text-gray-500 font-mono">\${entry.id}</span>
                         </div>
                         <h3 class="text-base font-bold text-white mb-1.5 line-clamp-2">\${escapeHtml(entry.title)}</h3>
-                        \${mdDesc ? `<div class="text-sm text-gray-400 line-clamp-3 leading-relaxed">\${mdDesc}</div>` : ''}
-                        \${tagsHtml}
+                        ${mdDesc ? `<div class="text-sm text-gray-400 line-clamp-3 leading-relaxed">${mdDesc}</div>` : ''}
+                        ${tagsHtml}
                         <div class="mt-3 flex items-center">
                             <i class="fa-solid fa-chevron-right text-gray-700 group-hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100 text-xs"></i>
                         </div>
