@@ -43,13 +43,22 @@
         /* Custom bubble gradients */
         .bubble-user {
             background: linear-gradient(135deg, #1f6feb 0%, #104eb2 100%);
-            border-bottom-right-radius: 2px;
+            border-bottom-right-radius: 6px;
+            border-top-right-radius: 24px;
+            border-top-left-radius: 24px;
+            border-bottom-left-radius: 24px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            color: #ffffff;
         }
         
         .bubble-system {
-            background-color: #21262d;
+            background-color: #161b22;
             border: 1px solid #30363d;
-            border-bottom-left-radius: 2px;
+            border-bottom-left-radius: 6px;
+            border-top-right-radius: 24px;
+            border-top-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
         }
 
         /* Slide drawer transitions for mobile responsiveness */
@@ -217,38 +226,22 @@
 
             <!-- Central Transcript Scroll pane -->
             <section id="chatPane" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-                <!-- Fallback Welcome Message Bubble -->
-                <div class="flex flex-col space-y-1 max-w-4xl bubble-system p-4 rounded-xl leading-relaxed text-sm shadow-md">
-                    <span id="welcomeHeader" class="text-xs text-blue-400 font-bold tracking-wider uppercase mb-2">Vault Assistant</span>
-                    <div class="space-y-4 text-gray-300">
-                         <p>Welcome to <strong class="text-white font-bold">MemoryVault</strong>! Your personal knowledge organizer, task tracker and chatbot.</p>
-                         
-                         <p>Let's capture notes on the fly. Simply type in the console below:</p>
-                         
-                         <pre class="bg-gray-900 border border-gray-850 rounded-xl p-3 font-mono text-xs text-blue-300 overflow-x-auto my-3 leading-relaxed shadow-inner">Bucket | Title | Tags | Description</pre>
-                         
-                         <p><em class="italic text-gray-300">Examples:</em></p>
-                         <ul class="space-y-1.5">
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">TASK | Review visual alignment | UI,design | Confirm canvas node sizing fits mobile browsers</code></li>
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">GOAL | Release alpha program | alpha | Launch simple offline PWA client</code></li>
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">NOTE | Karpathy learning session | llm,theory | Notes on high context windows in SQLite databases</code></li>
-                         </ul>
-                         
-                         <hr class="border-gray-800 my-4" />
-                         
-                         <h3 class="text-md font-bold text-white mt-3 mb-1 uppercase tracking-wider flex items-center space-x-2">
-                             <i class="fa-solid fa-list-check text-blue-500"></i>
-                             <span>⚡ Productivity Commands (Slash Commands)</span>
-                         </h3>
-                         <ul class="space-y-1.5">
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><strong class="text-white font-bold">/todo <code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">Bucket | Title | Tags | Description</code></strong> — Create an entry instantly.</li>
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><strong class="text-white font-bold">/done <code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">#0012</code></strong> — Mark item <code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">#0012</code> completed.</li>
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><strong class="text-white font-bold">/status <code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">#0012</code> <code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">in-progress</code></strong> — Set entry state to open, in-progress, done, archived.</li>
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><strong class="text-white font-bold">/search <code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">key</code></strong> — Filter search results for <code class="bg-gray-900 text-yellow-400 px-1.5 py-0.5 rounded font-mono border border-gray-800 text-xs">key</code>.</li>
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><strong class="text-white font-bold">/import</strong> — Trigger JSON data restore.</li>
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><strong class="text-white font-bold">/export</strong> — Click download.</li>
-                             <li class="ml-4 list-disc text-gray-300 pl-1 leading-relaxed"><strong class="text-white font-bold">/help</strong> — Raise instruction manuals.</li>
-                         </ul>
+                <!-- Friendly Hybrid Empty State -->
+                <div id="emptyStateContainer" class="flex flex-col items-center justify-center h-full max-w-2xl mx-auto text-center space-y-6 animate-fade-in pb-12">
+                    <div class="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20 mb-2">
+                        <i class="fa-solid fa-face-smile-wink text-3xl text-blue-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">What's on your mind today?</h2>
+                        <p class="text-gray-400 mt-3 max-w-sm mx-auto text-sm sm:text-base">Quickly capture your thoughts, tasks, and issues. We'll automatically organize them.</p>
+                    </div>
+
+                    <div id="exploreTagsCloud" class="w-full pt-4">
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Explore Your Day</p>
+                        <div id="dynamicTagsList" class="flex flex-wrap justify-center gap-2">
+                            <!-- Dynamic tag pills will be injected here. E.g.: -->
+                            <div class="italic text-xs text-gray-500">Loading your knowledge tags...</div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -384,47 +377,104 @@
             </section>
 
             <!-- Bottom inputs interface container -->
-            <footer class="p-4 bg-gray-900/60 border-t border-gray-800 shrink-0">
+            <footer class="p-3 md:p-5 shrink-0 relative bg-gray-950 flex flex-col items-center">
+                <!-- Action Suggestion Chips (ChatGPT/Tiimo Style) -->
+                <div class="w-full max-w-4xl mx-auto mb-3 px-2 overflow-x-auto whitespace-nowrap hide-scrollbar flex space-x-2">
+                    <button type="button" onclick="runContextChipCommand('✨ Summarize')" class="inline-flex items-center space-x-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition transform active:scale-95">
+                        <i class="fa-solid fa-sparkles text-yellow-500"></i>
+                        <span>Summarize</span>
+                    </button>
+                    <button type="button" onclick="runContextChipCommand('🎯 Add a Goal')" class="inline-flex items-center space-x-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition transform active:scale-95">
+                        <i class="fa-solid fa-bullseye text-purple-400"></i>
+                        <span>Add a Goal</span>
+                    </button>
+                    <button type="button" onclick="runContextChipCommand('⏳ Open Tasks')" class="inline-flex items-center space-x-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition transform active:scale-95">
+                        <i class="fa-solid fa-clock text-blue-400"></i>
+                        <span>Open Tasks</span>
+                    </button>
+                    <button type="button" onclick="runContextChipCommand('🚨 Search Issues')" class="inline-flex items-center space-x-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition transform active:scale-95">
+                        <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+                        <span>Search Issues</span>
+                    </button>
+                </div>
+
                 <!-- Attachment Tray -->
-                <div id="attachmentTray" class="hidden flex flex-wrap gap-2 mb-3 max-w-5xl mx-auto pb-2 border-b border-gray-800/50">
+                <div id="attachmentTray" class="hidden flex flex-wrap gap-2 mb-3 w-full max-w-4xl mx-auto pb-2 border-b border-gray-800/50">
                     <!-- Loaded dynamically in app.js -->
                 </div>
                 
                 <!-- Hidden inputs -->
                 <input type="file" id="attachmentFileInput" class="hidden" multiple accept="image/*,application/pdf,text/plain">
 
-                <form id="chatForm" class="flex space-x-2 sm:space-x-3 max-w-5xl mx-auto">
-                    <!-- Bucket quick helper button -->
-                    <div class="relative shrink-0">
-                        <button type="button" id="quickBucketBtn" class="h-12 w-14 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/80 text-gray-300 rounded-xl flex items-center justify-center font-bold text-xs transition" title="Quick assign category">
-                            <span id="quickBucketVal">TASK</span>
+                <!-- Tools Drawer (Slide-up absolute overlay) -->
+                <div id="quickBucketDropdown" class="hidden absolute bottom-[90px] md:bottom-[100px] left-4 md:left-8 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl p-3 z-50 w-64 md:w-80 transform transition-all duration-300">
+                    <p class="text-xs font-bold tracking-wider text-gray-400 mb-2 uppercase px-1">Log a New Box</p>
+                    <div class="space-y-1.5">
+                        <button type="button" class="w-full flex items-center p-2.5 rounded-xl hover:bg-gray-800 transition group text-left" onclick="selectQuickBucket('GOAL')">
+                            <div class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mr-3 border border-purple-500/20 group-hover:bg-purple-500/20 group-hover:border-purple-500/40 transition">
+                                <i class="fa-solid fa-bullseye text-purple-400"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Strategic Goal</h4>
+                                <p class="text-xs text-gray-400">Major milestones & projects</p>
+                            </div>
                         </button>
-                        <div id="quickBucketDropdown" class="hidden absolute bottom-14 left-0 w-32 bg-gray-800 border border-gray-700 rounded-xl shadow-xl p-1 z-50">
-                            <button type="button" class="w-full text-left px-3 py-1.5 text-xs font-semibold text-purple-400 hover:bg-gray-700 rounded" onclick="selectQuickBucket('GOAL')">GOAL</button>
-                            <button type="button" class="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-400 hover:bg-gray-700 rounded" onclick="selectQuickBucket('NOTE')">NOTE</button>
-                            <button type="button" class="w-full text-left px-3 py-1.5 text-xs font-semibold text-yellow-400 hover:bg-gray-700 rounded" onclick="selectQuickBucket('TASK')">TASK</button>
-                            <button type="button" class="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-gray-700 rounded" onclick="selectQuickBucket('ISSUE')">ISSUE</button>
-                        </div>
+                        <button type="button" class="w-full flex items-center p-2.5 rounded-xl hover:bg-gray-800 transition group text-left" onclick="selectQuickBucket('NOTE')">
+                            <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 mr-3 border border-blue-500/20 group-hover:bg-blue-500/20 group-hover:border-blue-500/40 transition">
+                                <i class="fa-solid fa-align-left text-blue-400"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Reference Note</h4>
+                                <p class="text-xs text-gray-400">Guides, research, thoughts</p>
+                            </div>
+                        </button>
+                        <button type="button" class="w-full flex items-center p-2.5 rounded-xl hover:bg-gray-800 transition group text-left" onclick="selectQuickBucket('TASK')">
+                            <div class="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0 mr-3 border border-yellow-500/20 group-hover:bg-yellow-500/20 group-hover:border-yellow-500/40 transition">
+                                <i class="fa-solid fa-check text-yellow-400"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Actionable Task</h4>
+                                <p class="text-xs text-gray-400">Next steps and chores</p>
+                            </div>
+                        </button>
+                        <button type="button" class="w-full flex items-center p-2.5 rounded-xl hover:bg-gray-800 transition group text-left" onclick="selectQuickBucket('ISSUE')">
+                            <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0 mr-3 border border-red-500/20 group-hover:bg-red-500/20 group-hover:border-red-500/40 transition">
+                                <i class="fa-solid fa-triangle-exclamation text-red-400"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Issue Block</h4>
+                                <p class="text-xs text-gray-400">Obstacles, bugs, friction</p>
+                            </div>
+                        </button>
                     </div>
+                </div>
+
+                <form id="chatForm" class="flex items-center space-x-2 md:space-x-3 w-full max-w-4xl mx-auto bg-gray-900 border border-gray-800 rounded-[24px] pl-2 pr-2 py-2 shadow-sm focus-within:ring-2 focus-within:ring-gray-700 transition-all">
                     
-                    <!-- Console Input field -->
-                    <div class="flex-1 relative">
-                        <textarea id="chatInput" placeholder="Write entry (e.g. TASK | Title | tag1,tag2 | Desc) or enter command..." class="w-full h-12 py-3.5 resize-none bg-gray-800/80 hover:bg-gray-700/10 focus:bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl px-4 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none transition"></textarea>
-                    </div>
-                    
-                    <!-- Attachment button -->
-                    <button type="button" id="attachmentBtn" class="h-12 w-12 shrink-0 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/80 text-gray-300 rounded-xl transition flex items-center justify-center" title="Attach multi-modal file/image">
-                        <i class="fa-solid fa-paperclip"></i>
+                    <!-- + Tools Drawer Button -->
+                    <button type="button" id="quickBucketBtn" class="h-10 w-10 shrink-0 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full flex items-center justify-center text-lg font-light transition" title="Open tools drawer">
+                        <i class="fa-solid fa-plus transition-transform duration-300"></i>
+                        <span id="quickBucketVal" class="hidden">TASK</span>
                     </button>
 
+                    <!-- Attachment button -->
+                    <button type="button" id="attachmentBtn" class="h-10 w-10 shrink-0 text-gray-400 hover:text-white rounded-full transition flex items-center justify-center" title="Attach multi-modal file/image">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </button>
+                    
+                    <!-- Console Input field (Pill inside) -->
+                    <div class="flex-1">
+                        <textarea id="chatInput" placeholder="Message MemoryVault... (or specific Bucket | Title)" class="w-full bg-transparent resize-none text-sm text-white placeholder-gray-500 focus:outline-none px-2 py-3 max-h-32 transition"></textarea>
+                    </div>
+                    
                     <!-- Search Action Button -->
-                    <button type="button" id="searchBtn" class="h-12 w-12 shrink-0 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 font-bold rounded-xl transition flex items-center justify-center" title="Search entries">
+                    <button type="button" id="searchBtn" class="h-10 w-10 shrink-0 text-gray-400 hover:text-white rounded-full transition flex items-center justify-center" title="Search entries">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </button>
 
                     <!-- Send Action Button -->
-                    <button type="submit" class="h-12 w-12 shrink-0 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-md transition flex items-center justify-center">
-                        <i class="fa-solid fa-paper-plane"></i>
+                    <button type="submit" class="h-10 w-10 shrink-0 bg-white hover:bg-gray-200 text-gray-900 rounded-full shadow-sm transition flex items-center justify-center transform active:scale-95">
+                        <i class="fa-solid fa-arrow-up"></i>
                     </button>
                 </form>
             </footer>

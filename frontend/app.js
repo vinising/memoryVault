@@ -1412,7 +1412,7 @@ function submitWithBucket(bucket) {
 
 function appendMessage(text, sender) {
     const bubble = document.createElement("div");
-    bubble.className = `flex flex-col space-y-1 max-w-xl p-3.5 rounded-2xl text-sm shadow-sm ${sender === "user" ? "self-end bubble-user text-white" : "self-start bubble-system"}`;
+    bubble.className = `flex flex-col space-y-1 max-w-xl px-5 py-4 text-sm font-medium ${sender === "user" ? "self-end bubble-user" : "self-start bubble-system text-gray-200"}`;
     bubble.textContent = text;
     chatPane.appendChild(bubble);
     scrollChatBottom();
@@ -1420,7 +1420,7 @@ function appendMessage(text, sender) {
 
 function appendSystemMessage(markdownText, type = "normal") {
     const bubble = document.createElement("div");
-    bubble.className = "flex flex-col space-y-1 max-w-4xl self-start bubble-system p-4 rounded-xl leading-relaxed text-sm shadow-md transition-all";
+    bubble.className = "flex flex-col space-y-1 max-w-4xl self-start bubble-system px-5 py-4 leading-relaxed text-sm transition-all";
     
     if (type === "error") {
         bubble.className += " border-red-500/30 text-red-500";
@@ -1436,7 +1436,7 @@ function appendCompletedEntryBubble(entry, offlineQueued = false) {
     const cleanId = entry.id.replace("#", "");
     const bubble = document.createElement("div");
     bubble.id = `entry-bubble-${cleanId}`;
-    bubble.className = "flex flex-col space-y-2 max-w-xl self-start bubble-system p-4 rounded-xl shadow-md transition-all duration-300 hover:border-gray-500/30 font-sans";
+    bubble.className = "flex flex-col space-y-2 max-w-xl self-start bubble-system px-5 py-4 transition-all duration-300 hover:shadow-lg font-sans";
     
     const labelColor = entry.bucket === 'GOAL' ? 'text-purple-400 border-purple-500/20 bg-purple-500/10' : (entry.bucket === 'NOTE' ? 'text-blue-400 border-blue-500/20 bg-blue-500/10' : (entry.bucket === 'TASK' ? 'text-yellow-400 border-yellow-500/20 bg-yellow-500/10' : 'text-red-400 border-red-500/20 bg-red-500/10'));
     const badgeText = offlineQueued ? "OFFLINE QUEUED" : entry.status.toUpperCase();
@@ -2264,3 +2264,30 @@ async function renderExploreTagsCloud() {
         list.innerHTML = "<div class='italic text-xs text-gray-500'>Could not load tags.</div>";
     }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    // Add logic for plus button rotation
+    const quickBucketBtn = document.getElementById("quickBucketBtn");
+    const quickBucketDropdown = document.getElementById("quickBucketDropdown");
+    if (quickBucketBtn && quickBucketDropdown) {
+        quickBucketBtn.addEventListener("click", () => {
+            const icon = quickBucketBtn.querySelector("i");
+            if (icon) {
+                if (quickBucketDropdown.classList.contains("hidden")) {
+                    icon.classList.remove("rotate-45");
+                } else {
+                    icon.classList.add("rotate-45");
+                }
+            }
+        });
+        
+        // Ensure reset when selecting an item
+        const dropdownButtons = quickBucketDropdown.querySelectorAll("button");
+        dropdownButtons.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const icon = quickBucketBtn.querySelector("i");
+                if (icon) icon.classList.remove("rotate-45");
+            });
+        });
+    }
+});
