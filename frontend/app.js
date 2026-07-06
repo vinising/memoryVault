@@ -30,6 +30,7 @@ const chatForm = document.getElementById("chatForm");
 const chatInput = document.getElementById("chatInput");
 const quickBucketBtn = document.getElementById("quickBucketBtn");
 const quickBucketVal = document.getElementById("quickBucketVal");
+const quickBucketBackdrop = document.getElementById("quickBucketBackdrop");
 const quickBucketDropdown = document.getElementById("quickBucketDropdown");
 const bucketModal = document.getElementById("bucketModal");
 const sidebar = document.getElementById("sidebar");
@@ -103,12 +104,65 @@ function setTimelineLayoutMode(mode) {
 
 function setQuickBucketDropdownOpen(isOpen) {
     if (!quickBucketDropdown) return;
+    syncQuickBucketDropdownLayout();
     quickBucketDropdown.classList.toggle("hidden", !isOpen);
+    if (quickBucketBackdrop) {
+        quickBucketBackdrop.classList.toggle("hidden", !isOpen || !isMobileViewport());
+    }
 
     const icon = quickBucketBtn ? quickBucketBtn.querySelector("i") : null;
     if (icon) {
         icon.classList.toggle("rotate-45", isOpen);
     }
+
+    if (quickBucketBtn) {
+        quickBucketBtn.classList.toggle("bg-blue-600", isOpen);
+        quickBucketBtn.classList.toggle("text-white", isOpen);
+        quickBucketBtn.classList.toggle("bg-gray-800", !isOpen);
+        quickBucketBtn.classList.toggle("text-gray-300", !isOpen);
+    }
+}
+
+function syncQuickBucketDropdownLayout() {
+    if (!quickBucketDropdown || !quickBucketBtn) return;
+
+    const mobile = isMobileViewport();
+    const buttonRect = quickBucketBtn.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    quickBucketDropdown.style.position = "fixed";
+    quickBucketDropdown.style.backgroundColor = "#11151d";
+    quickBucketDropdown.style.borderColor = "#1f2937";
+
+    if (mobile) {
+        quickBucketDropdown.style.left = "0";
+        quickBucketDropdown.style.right = "0";
+        quickBucketDropdown.style.bottom = "0";
+        quickBucketDropdown.style.top = "auto";
+        quickBucketDropdown.style.width = "auto";
+        quickBucketDropdown.style.maxHeight = "56vh";
+        quickBucketDropdown.style.padding = "0.9rem 1rem calc(1rem + env(safe-area-inset-bottom))";
+        quickBucketDropdown.style.borderWidth = "1px 0 0 0";
+        quickBucketDropdown.style.borderRadius = "28px 28px 0 0";
+        quickBucketDropdown.style.boxShadow = "0 -32px 80px rgba(0, 0, 0, 0.68)";
+        return;
+    }
+
+    const popupWidth = 336;
+    const popupLeft = Math.max(16, Math.min(buttonRect.left - 6, viewportWidth - popupWidth - 16));
+    const popupBottom = Math.max(96, viewportHeight - buttonRect.top + 12);
+
+    quickBucketDropdown.style.left = `${popupLeft}px`;
+    quickBucketDropdown.style.right = "auto";
+    quickBucketDropdown.style.bottom = `${popupBottom}px`;
+    quickBucketDropdown.style.top = "auto";
+    quickBucketDropdown.style.width = `${popupWidth}px`;
+    quickBucketDropdown.style.maxHeight = `${Math.min(440, viewportHeight - 120)}px`;
+    quickBucketDropdown.style.padding = "0.85rem";
+    quickBucketDropdown.style.borderWidth = "1px";
+    quickBucketDropdown.style.borderRadius = "24px";
+    quickBucketDropdown.style.boxShadow = "0 24px 60px rgba(0, 0, 0, 0.42)";
 }
 
 function closeMobileSidebar() {
@@ -166,6 +220,7 @@ function syncResponsiveUI() {
     }
 
     syncTimelineLayoutToggle();
+    syncQuickBucketDropdownLayout();
 }
 
 // --- STARTUP LOGIC ---
@@ -301,6 +356,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             e.stopPropagation();
             setQuickBucketDropdownOpen(quickBucketDropdown.classList.contains("hidden"));
         });
+    }
+
+    if (quickBucketDropdown) {
+        quickBucketDropdown.addEventListener("click", (e) => e.stopPropagation());
+        quickBucketDropdown.addEventListener("pointerdown", (e) => e.stopPropagation());
+    }
+
+    if (quickBucketBackdrop) {
+        quickBucketBackdrop.addEventListener("click", () => setQuickBucketDropdownOpen(false));
+        quickBucketBackdrop.addEventListener("pointerdown", () => setQuickBucketDropdownOpen(false));
     }
 
     if (chatInput) {
@@ -1517,35 +1582,174 @@ async function loadBuckets() {
 
 function renderQuickBucketSelector() {
     if (!quickBucketDropdown) return;
-    
-    let html = "";
-    activeBuckets.forEach(b => {
-        const textColor = colorsTextMap[b.color] || "text-gray-300";
-        html += `
-            <div class="flex items-center justify-between w-full hover:bg-gray-700/80 rounded transition group px-1">
-                <button type="button" class="text-left px-2.5 py-1.5 text-xs font-semibold ${textColor} flex-1" onclick="selectQuickBucket('${b.name}')">
-                    ${b.name}
-                </button>
-                ${b.is_custom ? `
-                    <button type="button" class="text-gray-500 hover:text-red-400 px-1 py-1 text-3xs opacity-0 group-hover:opacity-100 transition" onclick="deleteCustomBucketAsync('${b.name}')" title="Delete custom category">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                ` : ''}
+
+    const quickActions = [
+        {
+            id: "attach",
+            label: "Attach",
+            detail: "Files and images",
+            icon: "fa-paperclip",
+            accent: "text-blue-300 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/15"
+        },
+        {
+            id: "search",
+            label: "Search",
+            detail: "Find notes fast",
+            icon: "fa-magnifying-glass",
+            accent: "text-emerald-300 border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/15"
+        },
+        {
+            id: "timeline",
+            label: "Timeline",
+            detail: "Browse backlog",
+            icon: "fa-clock-rotate-left",
+            accent: "text-amber-300 border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/15"
+        },
+        {
+            id: "summarize",
+            label: "Summarize",
+            detail: "Workspace brief",
+            icon: "fa-sparkles",
+            accent: "text-fuchsia-300 border-fuchsia-500/20 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
+        }
+    ];
+
+    const bucketMeta = {
+        GOAL: { icon: "fa-bullseye", title: "Strategic Goal", detail: "Milestones and initiatives", tone: "text-purple-300 border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/15" },
+        NOTE: { icon: "fa-align-left", title: "Reference Note", detail: "Thoughts, context, research", tone: "text-blue-300 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/15" },
+        TASK: { icon: "fa-check", title: "Actionable Task", detail: "Next steps and chores", tone: "text-amber-300 border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/15" },
+        ISSUE: { icon: "fa-triangle-exclamation", title: "Issue Block", detail: "Problems and friction", tone: "text-red-300 border-red-500/20 bg-red-500/10 hover:bg-red-500/15" },
+        EVENT: { icon: "fa-calendar-day", title: "Event", detail: "Meetings and milestones", tone: "text-cyan-300 border-cyan-500/20 bg-cyan-500/10 hover:bg-cyan-500/15" },
+        REMINDER: { icon: "fa-bell", title: "Reminder", detail: "Things to revisit", tone: "text-lime-300 border-lime-500/20 bg-lime-500/10 hover:bg-lime-500/15" },
+        JOURNAL: { icon: "fa-book-open", title: "Journal", detail: "Reflections and daily notes", tone: "text-indigo-300 border-indigo-500/20 bg-indigo-500/10 hover:bg-indigo-500/15" },
+        PRODUCT: { icon: "fa-box-archive", title: "Product", detail: "Features and product ideas", tone: "text-orange-300 border-orange-500/20 bg-orange-500/10 hover:bg-orange-500/15" }
+    };
+
+    const quickActionHtml = quickActions.map((action) => `
+        <button type="button" onclick="runQuickAction('${action.id}')" class="w-full flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${action.accent}">
+            <div class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/10 shrink-0">
+                <i class="fa-solid ${action.icon} text-sm"></i>
             </div>
+            <div class="min-w-0">
+                <div class="text-sm font-semibold text-white leading-tight">${action.label}</div>
+                <div class="text-xs text-gray-400 truncate mt-0.5">${action.detail}</div>
+            </div>
+        </button>
+    `).join("");
+
+    const bucketCardsHtml = activeBuckets.map((bucket) => {
+        const meta = bucketMeta[bucket.name] || {
+            icon: "fa-layer-group",
+            title: bucket.name,
+            detail: bucket.is_custom ? "Custom capture type" : "Structured capture",
+            tone: "text-gray-200 border-gray-700/70 bg-gray-800/80 hover:bg-gray-800"
+        };
+        const selectedClass = currentBucket === bucket.name ? "ring-2 ring-blue-500/70 border-blue-500/40" : "border-transparent";
+        return `
+            <button type="button" onclick="selectQuickBucket('${bucket.name}')" class="rounded-2xl border ${selectedClass} ${meta.tone} px-3 py-3 text-left transition">
+                <div class="flex items-center gap-2.5">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-black/10 shrink-0">
+                        <i class="fa-solid ${meta.icon} text-sm"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-xs font-black tracking-[0.14em] text-gray-500 uppercase">${bucket.name}</div>
+                        <div class="text-sm font-semibold text-white truncate">${meta.title}</div>
+                    </div>
+                </div>
+            </button>
         `;
-    });
-    
-    // Append Category form modal trigger at the bottom
-    html += `
-        <hr class="border-gray-700/60 my-1" />
-        <button type="button" onclick="openCustomBucketModal()" class="w-full text-center py-1 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-3xs font-extrabold flex items-center justify-center space-x-1.5 transition">
-            <i class="fa-solid fa-square-plus"></i>
-            <span>Add Custom</span>
+    }).join("");
+
+    const customBuckets = activeBuckets.filter((bucket) => bucket.is_custom);
+    const customBucketHtml = customBuckets.length > 0 ? `
+        <div class="mt-5">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-bold tracking-[0.18em] text-gray-500 uppercase">Custom Categories</p>
+            </div>
+            <div class="space-y-2">
+                ${customBuckets.map((bucket) => `
+                    <div class="flex items-center gap-2 rounded-2xl border border-gray-800 bg-gray-900/70 px-3 py-2.5">
+                        <button type="button" onclick="selectQuickBucket('${bucket.name}')" class="flex-1 text-left">
+                            <div class="text-sm font-semibold text-white">${bucket.name}</div>
+                            <div class="text-2xs text-gray-500 mt-0.5">Tap to use this capture type.</div>
+                        </button>
+                        <button type="button" onclick="deleteCustomBucketAsync('${bucket.name}')" class="h-9 w-9 shrink-0 rounded-xl border border-gray-800 text-gray-500 hover:text-red-400 hover:border-red-500/30 transition">
+                            <i class="fa-solid fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                `).join("")}
+            </div>
+        </div>
+    ` : "";
+
+    quickBucketDropdown.innerHTML = `
+        <div class="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-700 md:hidden"></div>
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <div>
+                <p class="text-xs font-bold tracking-[0.18em] text-gray-500 uppercase">Tools</p>
+                <h3 class="text-base md:text-lg font-bold text-white mt-1">Create, search, or capture</h3>
+                <p class="text-xs text-gray-400 mt-1">The same capture and workflow options are available on desktop and mobile.</p>
+            </div>
+            <button type="button" onclick="setQuickBucketDropdownOpen(false)" class="h-10 w-10 shrink-0 rounded-2xl border border-gray-800 text-gray-400 hover:text-white transition md:hidden">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="space-y-2.5">
+            ${quickActionHtml}
+        </div>
+
+        <div class="mt-5">
+            <div class="flex items-center justify-between mb-3 gap-3">
+                <p class="text-xs font-bold tracking-[0.18em] text-gray-500 uppercase">Log As</p>
+                <span class="text-2xs text-gray-500">Current: ${currentBucket}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                ${bucketCardsHtml}
+            </div>
+        </div>
+
+        ${customBucketHtml}
+
+        <button type="button" onclick="openCustomBucketModal()" class="mt-4 w-full rounded-2xl border border-gray-700 bg-gray-900 hover:border-blue-500/30 hover:text-white text-gray-300 px-4 py-3 text-sm font-bold flex items-center justify-center gap-2 transition">
+            <i class="fa-solid fa-square-plus text-blue-400"></i>
+            <span>Add Custom Category</span>
         </button>
     `;
-    
-    quickBucketDropdown.innerHTML = html;
+    syncQuickBucketDropdownLayout();
 }
+
+function runQuickAction(action) {
+    setQuickBucketDropdownOpen(false);
+
+    if (action === "attach") {
+        if (attachmentFileInput) attachmentFileInput.click();
+        return;
+    }
+
+    if (action === "search") {
+        switchView("chat");
+        chatInput.value = "/search ";
+        chatInput.focus();
+        autoResizeChatInput();
+        return;
+    }
+
+    if (action === "timeline") {
+        switchView("timeline");
+        return;
+    }
+
+    if (action === "summarize") {
+        if (typeof triggerLLMSummary === "function") {
+            triggerLLMSummary();
+            return;
+        }
+        const summaryButton = document.getElementById("summarizeBtn");
+        if (summaryButton) summaryButton.click();
+    }
+}
+window.runQuickAction = runQuickAction;
 
 async function deleteCustomBucketAsync(bucketName) {
     if (!confirm(`Are you absolutely sure you want to delete category "${bucketName}"? This will not delete entries inside it, but will revoke its template.`)) return;
