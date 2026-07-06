@@ -67,6 +67,9 @@ const tracesContainer = document.getElementById("tracesContainer");
 const baseTabBtnClass = "flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold text-gray-400 hover:text-white rounded-xl transition shrink-0";
 const activeTabBtnClass = "flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold bg-blue-600 text-white rounded-xl transition shadow shrink-0";
 let timelineLayoutMode = localStorage.getItem("timelineLayoutMode") || (window.innerWidth < 768 ? "cards" : "stream");
+const expandedTimelineCards = new Set();
+let lastCopiedTimelineCardId = null;
+let lastCopiedTimelineCardResetHandle = null;
 
 function isMobileViewport() {
     return window.innerWidth < 768;
@@ -1332,6 +1335,55 @@ function toggleTimelineTagFilter(tag) {
 
 window.toggleTimelineTagFilter = toggleTimelineTagFilter;
 
+function toggleTimelineCardExpanded(entryId) {
+    if (expandedTimelineCards.has(entryId)) {
+        expandedTimelineCards.delete(entryId);
+    } else {
+        expandedTimelineCards.add(entryId);
+    }
+
+    if (currentViewEnv === "timeline") {
+        renderFilteredTimeline();
+    }
+}
+
+window.toggleTimelineCardExpanded = toggleTimelineCardExpanded;
+
+async function copyTimelineCardReference(entryId) {
+    const entry = allTimelineEntries.find((candidate) => candidate.id === entryId);
+    if (!entry) return;
+
+    const referenceText = [
+        entry.id,
+        decodeHtmlEntities(entry.title || "Untitled"),
+        decodeHtmlEntities(entry.description || "").trim()
+    ].filter(Boolean).join("\n");
+
+    try {
+        await navigator.clipboard.writeText(referenceText);
+        lastCopiedTimelineCardId = entryId;
+
+        if (lastCopiedTimelineCardResetHandle) {
+            clearTimeout(lastCopiedTimelineCardResetHandle);
+        }
+
+        lastCopiedTimelineCardResetHandle = window.setTimeout(() => {
+            lastCopiedTimelineCardId = null;
+            if (currentViewEnv === "timeline") {
+                renderFilteredTimeline();
+            }
+        }, 1400);
+
+        if (currentViewEnv === "timeline") {
+            renderFilteredTimeline();
+        }
+    } catch (error) {
+        console.error("Could not copy timeline card reference", error);
+    }
+}
+
+window.copyTimelineCardReference = copyTimelineCardReference;
+
 function renderFilteredTimeline() {
     if (!timelineContainer) return;
     const useCardsLayout = getTimelineLayoutMode() === "cards";
@@ -1420,6 +1472,7 @@ function renderFilteredTimeline() {
             groupEntries.forEach(entry => {
                 const dt = new Date(entry.timestamp);
                 const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const isExpanded = expandedTimelineCards.has(entry.id);
                 
                 let borderColor = "border-gray-800";
                 let badgeColor = "bg-gray-800 text-gray-400";
@@ -1430,27 +1483,37 @@ function renderFilteredTimeline() {
                 else if (entry.bucket === 'ISSUE') { borderColor = "border-red-500 rounded-[20px]"; badgeColor = "bg-gray-800 border border-gray-700 text-red-400"; }
                 
                 const cleanTitle = escapeHtml(decodeHtmlEntities(entry.title || "Untitled"));
-                const descPreview = escapeHtml(toPlainTextPreview(decodeHtmlEntities(entry.description || ""), 220));
+                const decodedDescription = decodeHtmlEntities(entry.description || "").trim();
+                const descPreview = escapeHtml(toPlainTextPreview(decodedDescription, 220));
+                const fullDescription = escapeHtml(decodedDescription);
+                const descriptionMarkup = decodedDescription
+                    ? isExpanded
+                        ? `<p class="text-sm text-gray-300 whitespace-pre-line leading-6">${fullDescription}</p>`
+                        : `<p class="text-xs sm:text-sm text-gray-400 ${useCardsLayout ? 'line-clamp-4 leading-5' : 'line-clamp-2 leading-7'}">${descPreview}</p>`
+                    : "";
                 
                 let tagsHtml = "";
                 if (entry.tags) {
                     const tagArr = entry.tags.split(",").map(t => t.trim()).filter(Boolean);
                     if (tagArr.length > 0) {
-                        const visibleTags = tagArr.slice(0, useCardsLayout ? 2 : 4);
+                        const visibleTags = isExpanded ? tagArr : tagArr.slice(0, useCardsLayout ? 2 : 4);
                         const overflowCount = tagArr.length - visibleTags.length;
                         tagsHtml = `<div class="flex flex-wrap gap-1.5 ${useCardsLayout ? 'mt-2.5' : 'mt-3'}">` + 
                             visibleTags.map(t => `<span class="bg-gray-900/80 px-2 py-0.5 border border-gray-700/50 rounded-full text-3xs font-medium text-gray-400 shrink-0">#${escapeHtml(decodeHtmlEntities(t))}</span>`).join("") +
-                            (overflowCount > 0 ? `<span class="px-2 py-0.5 rounded-full text-3xs font-semibold text-gray-500 border border-gray-800 bg-gray-950/80">+${overflowCount}</span>` : "") +
+                            (!isExpanded && overflowCount > 0 ? `<span class="px-2 py-0.5 rounded-full text-3xs font-semibold text-gray-500 border border-gray-800 bg-gray-950/80">+${overflowCount}</span>` : "") +
                             `</div>`;
                     }
                 }
                 
                 const currentStatus = (entry.status || "open").toLowerCase();
                 const badgeClass = getStatusClass(currentStatus);
+                const expandLabel = isExpanded ? "Collapse" : "Details";
+                const copyLabel = lastCopiedTimelineCardId === entry.id ? "Copied" : "Copy ref";
+                const cardStateClass = isExpanded ? "ring-1 ring-blue-500/30 shadow-lg shadow-blue-950/20" : "";
 
                 html += useCardsLayout
                     ? `
-                    <article class="bubble-system px-3 py-3 transition duration-200 hover:shadow-lg flex flex-col gap-2.5 group border min-h-[11rem] ${borderColor}">
+                    <article class="bubble-system px-3 py-3 transition duration-200 hover:shadow-lg flex flex-col gap-2.5 group border ${isExpanded ? '' : 'min-h-[11rem]'} ${borderColor} ${cardStateClass}">
                         <div class="flex items-start justify-between gap-2">
                             <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
                             <span class="text-[10px] rounded-lg px-1.5 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
@@ -1469,15 +1532,25 @@ function renderFilteredTimeline() {
                                 </div>
                             </div>
                         </div>
-                        <div class="space-y-1.5">
-                            <h3 class="text-sm font-semibold text-white leading-snug line-clamp-3">${cleanTitle}</h3>
-                            ${descPreview && descPreview !== 'No description available.' ? `<p class="text-xs text-gray-400 line-clamp-4 leading-5">${descPreview}</p>` : ''}
-                        </div>
+                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="space-y-1.5 text-left rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-0">
+                            <h3 class="text-sm font-semibold text-white leading-snug ${isExpanded ? '' : 'line-clamp-3'}">${cleanTitle}</h3>
+                            ${descriptionMarkup}
+                        </button>
                         ${tagsHtml}
+                        <div class="mt-auto flex items-center gap-2 pt-1.5">
+                            <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-2.5 py-1 text-3xs font-bold text-gray-300 hover:text-white hover:border-blue-500/40 transition">
+                                <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px]"></i>
+                                <span>${expandLabel}</span>
+                            </button>
+                            <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-2.5 py-1 text-3xs font-bold ${lastCopiedTimelineCardId === entry.id ? 'text-emerald-300 border-emerald-500/30' : 'text-gray-300 hover:text-white hover:border-blue-500/40'} transition">
+                                <i class="fa-solid ${lastCopiedTimelineCardId === entry.id ? 'fa-check' : 'fa-copy'} text-[10px]"></i>
+                                <span>${copyLabel}</span>
+                            </button>
+                        </div>
                     </article>
                 `
                     : `
-                    <article class="bubble-system px-4 py-3.5 md:px-5 md:py-4 transition duration-200 hover:shadow-lg flex flex-col gap-3 group border ${borderColor}">
+                    <article class="bubble-system px-4 py-3.5 md:px-5 md:py-4 transition duration-200 hover:shadow-lg flex flex-col gap-3 group border ${borderColor} ${cardStateClass}">
                         <div class="flex flex-wrap justify-between items-start gap-3">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
@@ -1496,11 +1569,21 @@ function renderFilteredTimeline() {
                             </div>
                             <span class="text-3xs rounded-lg px-2 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
                         </div>
-                        <div class="space-y-2">
-                            <h3 class="text-lg font-semibold text-white leading-tight line-clamp-2">${cleanTitle}</h3>
-                            ${descPreview && descPreview !== 'No description available.' ? `<p class="text-sm text-gray-400 line-clamp-2 leading-7">${descPreview}</p>` : ''}
-                        </div>
+                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="space-y-2 text-left rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-0">
+                            <h3 class="text-lg font-semibold text-white leading-tight ${isExpanded ? '' : 'line-clamp-2'}">${cleanTitle}</h3>
+                            ${descriptionMarkup}
+                        </button>
                         ${tagsHtml}
+                        <div class="flex items-center gap-2 pt-1">
+                            <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-3 py-1.5 text-3xs font-bold text-gray-300 hover:text-white hover:border-blue-500/40 transition">
+                                <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px]"></i>
+                                <span>${expandLabel}</span>
+                            </button>
+                            <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-3 py-1.5 text-3xs font-bold ${lastCopiedTimelineCardId === entry.id ? 'text-emerald-300 border-emerald-500/30' : 'text-gray-300 hover:text-white hover:border-blue-500/40'} transition">
+                                <i class="fa-solid ${lastCopiedTimelineCardId === entry.id ? 'fa-check' : 'fa-copy'} text-[10px]"></i>
+                                <span>${copyLabel}</span>
+                            </button>
+                        </div>
                     </article>
                 `;
             });
@@ -1609,7 +1692,7 @@ function renderQuickBucketSelector() {
             id: "summarize",
             label: "Summarize",
             detail: "Workspace brief",
-            icon: "fa-sparkles",
+            icon: "fa-bolt",
             accent: "text-fuchsia-300 border-fuchsia-500/20 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
         }
     ];
@@ -1933,7 +2016,7 @@ function appendLlmResponseBubble(responseMarkdown, modelName, latencyMs) {
     bubble.innerHTML = `
         <div class="flex justify-between items-center text-3xs border-b border-gray-800 pb-2 mb-2">
             <div class="flex items-center space-x-1">
-                <i class="fa-solid fa-sparkles text-blue-500 animate-pulse"></i>
+                <i class="fa-solid fa-bolt text-blue-500 animate-pulse"></i>
                 <span class="px-2 py-0.5 rounded font-mono font-bold ${colorBadge}">${modelName}</span>
             </div>
             <span class="text-gray-500 font-mono">Response latency: ${latencyMs}ms</span>

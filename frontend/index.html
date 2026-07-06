@@ -9,7 +9,7 @@
     <!-- Load Tailwind CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     
     <style>
         :root {
@@ -285,23 +285,20 @@
             <div id="desktopHeader" class="flex flex-col md:flex-row p-3 md:p-4 border-b border-gray-800 justify-between items-stretch md:items-center gap-3 bg-gray-900/40 backdrop-blur shrink-0">
                 <div class="flex items-center gap-2 w-full md:w-auto">
                     <button id="desktopSidebarRevealBtn" type="button" class="hidden md:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-800 bg-gray-950/80 text-gray-300 hover:text-white hover:border-gray-700 transition">
-                        <i class="fa-solid fa-panel-left text-sm"></i>
+                        <i class="fa-solid fa-vault text-sm text-blue-400"></i>
                     </button>
                     <div class="flex items-center gap-1.5 bg-gray-950/80 p-1 rounded-2xl border border-gray-800/80 w-full md:w-auto overflow-x-auto hide-scrollbar">
                     <button id="tabChatBtn" type="button" class="flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold bg-blue-600 text-white rounded-xl transition shadow shrink-0">
                         <i class="fa-solid fa-comments"></i>
-                        <span class="mobile-tab-label">Console Chat</span>
-                        <span class="mobile-tab-short">Chat</span>
+                        <span>Chat</span>
                     </button>
                     <button id="tabTimelineBtn" type="button" class="flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold text-gray-400 hover:text-white rounded-xl transition shrink-0">
                         <i class="fa-solid fa-clock-rotate-left"></i>
-                        <span class="mobile-tab-label">Note Timeline</span>
-                        <span class="mobile-tab-short">Timeline</span>
+                        <span>Timeline</span>
                     </button>
                     <button id="tabGraphBtn" type="button" class="flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold text-gray-400 hover:text-white rounded-xl transition shrink-0">
                         <i class="fa-solid fa-diagram-project"></i>
-                        <span class="mobile-tab-label">Knowledge Map</span>
-                        <span class="mobile-tab-short">Graph</span>
+                        <span>Graph</span>
                     </button>
                     </div>
                 </div>
@@ -312,7 +309,7 @@
                     </span>
                     <!-- LLM Summary Trigger -->
                     <button id="summarizeBtn" class="hidden md:flex items-center justify-center space-x-2 px-4 py-2 text-sm md:text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition shadow-md shrink-0 w-auto md:min-w-[100px]">
-                        <i class="fa-solid fa-sparkles text-yellow-300"></i>
+                        <i class="fa-solid fa-bolt text-yellow-300"></i>
                         <span>Summarize</span>
                     </button>
                 </div>
@@ -554,7 +551,7 @@
     </div>
 
     <!-- App Logical controller App.js -->
-    <script src="/static/app.js?v=7"></script>
+    <script src="/static/app.js?v=8"></script>
 
     <!-- Register service worker automatically -->
     <script>
