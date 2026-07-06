@@ -217,6 +217,26 @@ def test_comma_separated_or_search(client):
     assert e_led["id"] in rel_ids
 
 
+def test_operator_search_preserves_multiword_groups(client):
+    """
+    Verifies that explicit FTS operator queries with grouped multi-word terms are
+    passed through intact instead of being mutated by wildcard suffixing.
+    """
+    e_tracker = add(client, "NOTE", "Reading tracker setup",
+                    "reading,tracker", "Organize the reading tracker template")
+    e_ledger = add(client, "NOTE", "Ledger workspace notes",
+                   "ledger,finance", "Monthly ledger cleanup")
+    e_other = add(client, "TASK", "Plan team offsite",
+                  "planning,event", "Finalize venue shortlist")
+
+    grouped = search(client, "(reading* AND tracker*) OR ledger*")
+    grouped_ids = {entry["id"] for entry in grouped}
+
+    assert e_tracker["id"] in grouped_ids
+    assert e_ledger["id"] in grouped_ids
+    assert e_other["id"] not in grouped_ids
+
+
 def test_keyword_search_across_mixed_content(client):
     """
     Verifies that FTS5 search finds terms in title, tags, AND description,

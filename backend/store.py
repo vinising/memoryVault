@@ -340,8 +340,8 @@ class EntryStore:
                     JOIN entries_fts f ON e.id = f.id 
                     WHERE entries_fts MATCH ?
                 """
-                # Appending wildcard matches automatically
-                fts_query = f"{keyword_query}*" if not keyword_query.endswith("*") else keyword_query
+                has_fts_operators = any(token in keyword_query for token in (" OR ", " AND ", " NOT ", "(", ")", '"', "*"))
+                fts_query = keyword_query if has_fts_operators else f"{keyword_query}*"
                 fts_params = [fts_query]
                 
                 # Stack extra criteria

@@ -1344,6 +1344,21 @@ let allTimelineEntries = [];
 let activeTimelineStatusFilter = "all";
 let activeTimelineTagFilters = [];
 
+function buildCommaSeparatedSearchQuery(rawValue) {
+    return rawValue
+        .split(",")
+        .map((term) => term.trim())
+        .filter(Boolean)
+        .map((term) => {
+            const words = term.split(/\s+/).filter(Boolean);
+            if (words.length <= 1) {
+                return `${term}*`;
+            }
+            return `(${words.map((word) => `${word}*`).join(" AND ")})`;
+        })
+        .join(" OR ");
+}
+
 async function triggerTimelineSearch() {
     const queryInput = document.getElementById("timelineSearchQuery");
     const sortOrderSelect = document.getElementById("timelineSortOrder");
@@ -1356,10 +1371,7 @@ async function triggerTimelineSearch() {
     let searchMode = "keyword";
     if (rawVal) {
         if (rawVal.includes(",")) {
-            // Comma-separated terms → natural language query for semantic embedding search
-            // Backend falls back to FTS5 OR if Ollama embedding model is unavailable
-            finalQuery = rawVal.split(",").map(t => t.trim()).filter(Boolean).join(" ");
-            searchMode = "semantic";
+            finalQuery = buildCommaSeparatedSearchQuery(rawVal);
         } else {
             finalQuery = rawVal;
         }
