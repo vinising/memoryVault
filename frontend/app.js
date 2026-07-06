@@ -1176,7 +1176,6 @@ function renderFilteredTimeline() {
         }
         
         timelineContainer.innerHTML = html;
-        if (timelineTotalCount) timelineTotalCount.textContent = entries.length;
     }
 
 // Separate helper for async updates inside the Timeline view with immediate table refresh
