@@ -5,6 +5,17 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
+echo "🔍 Checking for stale processes on port 8000..."
+if command -v lsof &> /dev/null; then
+    # lsof -ti:8000 returns the PIDs listening on port 8000
+    PID=$(lsof -ti:8000)
+    if [ -n "$PID" ]; then
+        echo "🛑 Killing stale process(es) ($PID) running on port 8000..."
+        kill -9 $PID
+        sleep 1
+    fi
+fi
+
 echo "============================================="
 echo "📁 Root Directory: $DIR"
 echo "🚀 Spawning FastAPI uvicorn daemon in separate terminal..."
@@ -12,23 +23,25 @@ echo "============================================="
 
 # Identify running platform and launch separate terminal
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # MacOS custom terminal window allocation
-    osascript -e "tell application \"Terminal\" to do script \"cd '$DIR' && .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000\""
-    echo "✅ Created separate physical macOS Terminal window running uvicorn on port 8000."
+    # Instead of launching a separate physical terminal window which can be unreliable,
+    # run as a background process and log to server.log
+    .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload > server.log 2>&1 &
+    echo "✅ Started uvicorn as a background process on port 8000."
+    echo "📜 Logs are being written to server.log"
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     if command -v gnome-terminal &> /dev/null; then
-        gnome-terminal -- bash -c "cd '$DIR' && .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000; exec bash"
+        gnome-terminal -- bash -c "cd '$DIR' && .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload; exec bash"
     elif command -v xterm &> /dev/null; then
-        xterm -title "MemoryVault Server" -hold -e "cd '$DIR' && .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000" &
+        xterm -title "MemoryVault Server" -hold -e "cd '$DIR' && .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload" &
     else
         # Fallback background runner
-        .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 > server.log 2>&1 &
+        .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload > server.log 2>&1 &
         echo "⚠️ No UI emulator found. Started uvicorn as background process feeding server.log."
     fi
     echo "✅ Started Linux environment terminal launcher."
 else
     # General shell background failovler
-    .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 > server.log 2>&1 &
+    .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload > server.log 2>&1 &
     echo "✅ Started fallback background server process feeding server.log."
 fi
 
