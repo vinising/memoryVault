@@ -18,6 +18,8 @@ const graphPane = document.getElementById("graphPane");
 const tabChatBtn = document.getElementById("tabChatBtn");
 const tabTimelineBtn = document.getElementById("tabTimelineBtn");
 const tabGraphBtn = document.getElementById("tabGraphBtn");
+const timelineCardsViewBtn = document.getElementById("timelineCardsViewBtn");
+const timelineStreamViewBtn = document.getElementById("timelineStreamViewBtn");
 
 const timelineContainer = document.getElementById("timelineContainer");
 const timelineTotalCount = document.getElementById("timelineTotalCount");
@@ -35,6 +37,7 @@ const mobileMenuBtn = document.getElementById("mobileMenuBtn");
 const mobileSidebarBackdrop = document.getElementById("mobileSidebarBackdrop");
 const mobileSidebarCloseBtn = document.getElementById("mobileSidebarCloseBtn");
 const sidebarCollapseBtn = document.getElementById("sidebarCollapseBtn");
+const desktopSidebarRevealBtn = document.getElementById("desktopSidebarRevealBtn");
 
 const attachmentTray = document.getElementById("attachmentTray");
 const attachmentFileInput = document.getElementById("attachmentFileInput");
@@ -62,9 +65,40 @@ const tracesContainer = document.getElementById("tracesContainer");
 
 const baseTabBtnClass = "flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold text-gray-400 hover:text-white rounded-xl transition shrink-0";
 const activeTabBtnClass = "flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold bg-blue-600 text-white rounded-xl transition shadow shrink-0";
+let timelineLayoutMode = localStorage.getItem("timelineLayoutMode") || (window.innerWidth < 768 ? "cards" : "stream");
 
 function isMobileViewport() {
     return window.innerWidth < 768;
+}
+
+function getTimelineLayoutMode() {
+    return isMobileViewport() ? timelineLayoutMode : "stream";
+}
+
+function syncTimelineLayoutToggle() {
+    const activeMode = getTimelineLayoutMode();
+
+    if (timelineCardsViewBtn) {
+        timelineCardsViewBtn.className = activeMode === "cards"
+            ? "px-3 py-1.5 rounded-full text-2xs font-bold bg-blue-600 text-white shadow-sm transition"
+            : "px-3 py-1.5 rounded-full text-2xs font-bold text-gray-400 hover:text-white transition";
+    }
+
+    if (timelineStreamViewBtn) {
+        timelineStreamViewBtn.className = activeMode === "stream"
+            ? "px-3 py-1.5 rounded-full text-2xs font-bold bg-blue-600 text-white shadow-sm transition"
+            : "px-3 py-1.5 rounded-full text-2xs font-bold text-gray-400 hover:text-white transition";
+    }
+}
+
+function setTimelineLayoutMode(mode) {
+    if (mode !== "cards" && mode !== "stream") return;
+    timelineLayoutMode = mode;
+    localStorage.setItem("timelineLayoutMode", mode);
+    syncTimelineLayoutToggle();
+    if (currentViewEnv === "timeline") {
+        renderFilteredTimeline();
+    }
 }
 
 function setQuickBucketDropdownOpen(isOpen) {
@@ -81,6 +115,25 @@ function closeMobileSidebar() {
     if (!sidebar) return;
     sidebar.classList.remove("open");
     if (mobileSidebarBackdrop) mobileSidebarBackdrop.classList.add("hidden");
+}
+
+function syncSidebarCollapsedState(isCollapsed) {
+    if (!sidebar) return;
+
+    const applyCollapse = isCollapsed && !isMobileViewport();
+
+    sidebar.classList.toggle("collapsed", applyCollapse);
+    localStorage.setItem("sidebarCollapsed", isCollapsed);
+
+    const collapseIcon = sidebarCollapseBtn ? sidebarCollapseBtn.querySelector(".fa-chevron-left") : null;
+    if (collapseIcon) {
+        collapseIcon.style.transform = applyCollapse ? "scaleX(-1)" : "";
+    }
+
+    if (desktopSidebarRevealBtn) {
+        desktopSidebarRevealBtn.classList.toggle("hidden", !applyCollapse);
+        desktopSidebarRevealBtn.classList.toggle("md:flex", applyCollapse);
+    }
 }
 
 function toggleMobileSidebar() {
@@ -101,13 +154,21 @@ function syncResponsiveUI() {
     if (chatInput) {
         chatInput.placeholder = isMobileViewport() ? "Message..." : "Message MemoryVault...";
     }
+
+    if (desktopSidebarRevealBtn && sidebar) {
+        const isCollapsed = sidebar.classList.contains("collapsed");
+        desktopSidebarRevealBtn.classList.toggle("hidden", !isCollapsed || isMobileViewport());
+        desktopSidebarRevealBtn.classList.toggle("md:flex", isCollapsed && !isMobileViewport());
+    }
+
+    syncTimelineLayoutToggle();
 }
 
 // --- STARTUP LOGIC ---
 document.addEventListener("DOMContentLoaded", async () => {
     try { if (typeof renderExploreTagsCloud === "function") renderExploreTagsCloud(); } catch(e){}
     await loadBuckets();
-    // loadBuckets correctly triggers refreshMetrics once it resolves 
+    await refreshMetrics();
     refreshTraces();
     checkConnectionStatus();
     
@@ -129,6 +190,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.log("Graph tab clicked");
             switchView("graph");
         });
+    }
+
+    if (timelineCardsViewBtn) {
+        timelineCardsViewBtn.addEventListener("click", () => setTimelineLayoutMode("cards"));
+    }
+
+    if (timelineStreamViewBtn) {
+        timelineStreamViewBtn.addEventListener("click", () => setTimelineLayoutMode("stream"));
     }
     
     // Auto-focus chat input field on '/' keypress
@@ -202,25 +271,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Toggle Desktop Sidebar collapse
     if (sidebarCollapseBtn) {
         sidebarCollapseBtn.addEventListener("click", () => {
-            sidebar.classList.toggle("collapsed");
-            const isCollapsed = sidebar.classList.contains("collapsed");
-            localStorage.setItem("sidebarCollapsed", isCollapsed);
-            // Rotate the chevron icon
-            const icon = sidebarCollapseBtn.querySelector(".fa-chevron-left");
-            if (icon) {
-                icon.style.transform = isCollapsed ? "scaleX(-1)" : "";
-            }
+            syncSidebarCollapsedState(!sidebar.classList.contains("collapsed"));
+        });
+    }
+
+    if (desktopSidebarRevealBtn) {
+        desktopSidebarRevealBtn.addEventListener("click", () => {
+            syncSidebarCollapsedState(false);
         });
     }
 
     // Restore sidebar collapsed state from localStorage
-    if (sidebarCollapseBtn && localStorage.getItem("sidebarCollapsed") === "true") {
-        sidebar.classList.add("collapsed");
-        const icon = sidebarCollapseBtn.querySelector(".fa-chevron-left");
-        if (icon) {
-            icon.style.transform = "scaleX(-1)";
-        }
-    }
+    syncSidebarCollapsedState(localStorage.getItem("sidebarCollapsed") === "true");
 
     // Toggle quick bucket dropdown
     if (quickBucketBtn) {
@@ -446,7 +508,7 @@ window.addEventListener("offline", () => {
 function autoResizeChatInput() {
     if (!chatInput) return;
     chatInput.style.height = "auto";
-    chatInput.style.height = Math.min(chatInput.scrollHeight, 180) + "px";
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 104) + "px";
 }
 
 // Form submission router
@@ -1196,6 +1258,7 @@ window.toggleTimelineTagFilter = toggleTimelineTagFilter;
 
 function renderFilteredTimeline() {
     if (!timelineContainer) return;
+    const useCardsLayout = getTimelineLayoutMode() === "cards";
     
     let filtered = allTimelineEntries;
     if (activeTimelineStatusFilter !== "all") {
@@ -1276,7 +1339,7 @@ function renderFilteredTimeline() {
                 </div>
             `;
             
-            html += `<div class="space-y-4">`;
+            html += `<div class="${useCardsLayout ? 'grid grid-cols-2 gap-3 items-start' : 'space-y-4'}">`;
             
             groupEntries.forEach(entry => {
                 const dt = new Date(entry.timestamp);
@@ -1297,9 +1360,9 @@ function renderFilteredTimeline() {
                 if (entry.tags) {
                     const tagArr = entry.tags.split(",").map(t => t.trim()).filter(Boolean);
                     if (tagArr.length > 0) {
-                        const visibleTags = tagArr.slice(0, 4);
+                        const visibleTags = tagArr.slice(0, useCardsLayout ? 2 : 4);
                         const overflowCount = tagArr.length - visibleTags.length;
-                        tagsHtml = `<div class="flex flex-wrap gap-1.5 mt-3">` + 
+                        tagsHtml = `<div class="flex flex-wrap gap-1.5 ${useCardsLayout ? 'mt-2.5' : 'mt-3'}">` + 
                             visibleTags.map(t => `<span class="bg-gray-900/80 px-2 py-0.5 border border-gray-700/50 rounded-full text-3xs font-medium text-gray-400 shrink-0">#${escapeHtml(decodeHtmlEntities(t))}</span>`).join("") +
                             (overflowCount > 0 ? `<span class="px-2 py-0.5 rounded-full text-3xs font-semibold text-gray-500 border border-gray-800 bg-gray-950/80">+${overflowCount}</span>` : "") +
                             `</div>`;
@@ -1309,7 +1372,35 @@ function renderFilteredTimeline() {
                 const currentStatus = (entry.status || "open").toLowerCase();
                 const badgeClass = getStatusClass(currentStatus);
 
-                html += `
+                html += useCardsLayout
+                    ? `
+                    <article class="bubble-system px-3 py-3 transition duration-200 hover:shadow-lg flex flex-col gap-2.5 group border min-h-[11rem] ${borderColor}">
+                        <div class="flex items-start justify-between gap-2">
+                            <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
+                            <span class="text-[10px] rounded-lg px-1.5 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[11px] text-gray-500 font-medium">${timeStr}</span>
+                            <div class="relative inline-block shrink-0">
+                                <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge text-3xs px-2 py-0.5 pr-5 rounded-full font-bold cursor-pointer transition ${badgeClass} bg-gray-900/90 max-w-[6.7rem]">
+                                    <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
+                                    <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
+                                    <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
+                                    <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5">
+                                    <i class="fa-solid fa-chevron-down text-3xs opacity-60"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <h3 class="text-sm font-semibold text-white leading-snug line-clamp-3">${cleanTitle}</h3>
+                            ${descPreview && descPreview !== 'No description available.' ? `<p class="text-xs text-gray-400 line-clamp-4 leading-5">${descPreview}</p>` : ''}
+                        </div>
+                        ${tagsHtml}
+                    </article>
+                `
+                    : `
                     <article class="bubble-system px-4 py-3.5 md:px-5 md:py-4 transition duration-200 hover:shadow-lg flex flex-col gap-3 group border ${borderColor}">
                         <div class="flex flex-wrap justify-between items-start gap-3">
                             <div class="flex flex-wrap items-center gap-2">
@@ -2329,6 +2420,7 @@ window.addEventListener("resize", () => {
         closeMobileSidebar();
     }
 
+    syncSidebarCollapsedState(localStorage.getItem("sidebarCollapsed") === "true");
     syncResponsiveUI();
 
     if (currentViewEnv === "graph") {
