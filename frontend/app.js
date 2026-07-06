@@ -117,6 +117,10 @@ function closeMobileSidebar() {
     if (mobileSidebarBackdrop) mobileSidebarBackdrop.classList.add("hidden");
 }
 
+function isMobileSidebarOpen() {
+    return Boolean(sidebar && isMobileViewport() && sidebar.classList.contains("open"));
+}
+
 function syncSidebarCollapsedState(isCollapsed) {
     if (!sidebar) return;
 
@@ -266,7 +270,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (mobileSidebarBackdrop) {
         mobileSidebarBackdrop.addEventListener("click", closeMobileSidebar);
+        mobileSidebarBackdrop.addEventListener("pointerdown", closeMobileSidebar);
     }
+
+    document.addEventListener("pointerdown", (e) => {
+        if (!isMobileSidebarOpen() || !sidebar) return;
+        if (sidebar.contains(e.target) || (mobileMenuBtn && mobileMenuBtn.contains(e.target))) return;
+        closeMobileSidebar();
+    }, true);
 
     // Toggle Desktop Sidebar collapse
     if (sidebarCollapseBtn) {
@@ -2278,20 +2289,28 @@ function getMousePosFromCanvas(e) {
     return { x: graphSpaceX, y: graphSpaceY };
 }
 
+function findClosestNodeAtPosition(point, extraRadius = 0) {
+    let closestNode = null;
+    let closestDistanceSq = Infinity;
+
+    nodes.forEach((node) => {
+        const dx = point.x - node.x;
+        const dy = point.y - node.y;
+        const hitRadius = node.radius + extraRadius;
+        const distanceSq = dx * dx + dy * dy;
+
+        if (distanceSq <= hitRadius * hitRadius && distanceSq < closestDistanceSq) {
+            closestNode = node;
+            closestDistanceSq = distanceSq;
+        }
+    });
+
+    return closestNode;
+}
+
 function onCanvasMouseDown(e) {
     const m = getMousePosFromCanvas(e);
-    
-    // Search hit intersection
-    let hitNode = null;
-    for (let i = nodes.length - 1; i >= 0; i--) {
-        const n = nodes[i];
-        const dx = m.x - n.x;
-        const dy = m.y - n.y;
-        if (dx*dx + dy*dy < n.radius * n.radius) {
-            hitNode = n;
-            break;
-        }
-    }
+    const hitNode = findClosestNodeAtPosition(m, 4);
 
     if (hitNode) {
         dragNode = hitNode;
@@ -2328,17 +2347,7 @@ function onCanvasMouseMove(e) {
         return;
     }
 
-    // Check tooltip/hover intersections
-    let hover = null;
-    for (let i = nodes.length - 1; i >= 0; i--) {
-        const n = nodes[i];
-        const dx = m.x - n.x;
-        const dy = m.y - n.y;
-        if (dx*dx + dy*dy < n.radius * n.radius) {
-            hover = n;
-            break;
-        }
-    }
+    const hover = findClosestNodeAtPosition(m, 6);
 
     if (hover !== currentHoverNode) {
         currentHoverNode = hover;
@@ -2376,13 +2385,10 @@ function onCanvasWheel(e) {
 
 function onCanvasDoubleClick(e) {
     const m = getMousePosFromCanvas(e);
-    nodes.forEach(n => {
-        const dx = m.x - n.x;
-        const dy = m.y - n.y;
-        if (dx*dx + dy*dy < n.radius * n.radius) {
-            snapFocusToNote(n.id);
-        }
-    });
+    const hitNode = findClosestNodeAtPosition(m, 6);
+    if (hitNode) {
+        snapFocusToNote(hitNode.id);
+    }
 }
 
 function populateNodeDetailsWidget(node) {
