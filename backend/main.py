@@ -65,7 +65,7 @@ def add_new_entry(entry: NewEntry, background_tasks: BackgroundTasks):
             
             entry.bucket = BucketEnum(ai_data["bucket"])
             entry.title = ai_data["title"]
-            entry.description = ai_data["description"]
+            entry.description = f"{ai_data['description']}\n\n**Original Note:**\n{raw_text}"
             
             # Merge user manual tags and AI generated semantic tags cleanly
             user_tags = [t.strip() for t in (entry.tags or "").split(",") if t.strip()]
@@ -192,6 +192,19 @@ async def upload_file_attachment(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"File upload error: {str(e)}")
 
+@app.delete("/upload/{file_id}", dependencies=[Depends(verify_token)])
+def delete_file_attachment(file_id: str):
+    try:
+        # Search for any file in attachments_dir matching the exact uuid
+        for file_path in attachments_dir.iterdir():
+            if file_path.is_file() and file_path.stem == file_id:
+                file_path.unlink()
+                return {"status": "success", "id": file_id, "deleted": True}
+        raise HTTPException(status_code=404, detail="File attachment not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File deletion error: {str(e)}")
 
 @app.post("/import", dependencies=[Depends(verify_token)])
 async def import_all(file: UploadFile = File(...)):

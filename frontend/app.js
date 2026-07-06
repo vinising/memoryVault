@@ -28,6 +28,7 @@ const allocationBarsContainer = document.getElementById("allocationBarsContainer
 
 const chatForm = document.getElementById("chatForm");
 const chatInput = document.getElementById("chatInput");
+const slashCommandMenu = document.getElementById("slashCommandMenu");
 const quickBucketBtn = document.getElementById("quickBucketBtn");
 const quickBucketVal = document.getElementById("quickBucketVal");
 const quickBucketBackdrop = document.getElementById("quickBucketBackdrop");
@@ -70,13 +71,25 @@ let timelineLayoutMode = localStorage.getItem("timelineLayoutMode") || (window.i
 const expandedTimelineCards = new Set();
 let lastCopiedTimelineCardId = null;
 let lastCopiedTimelineCardResetHandle = null;
+const slashCommandDefinitions = [
+    { command: "/todo", template: "/todo ", description: "Create a new entry from a title or pipe-form payload." },
+    { command: "/done", template: "/done #", description: "Mark an entry as done by ID." },
+    { command: "/close", template: "/close #", description: "Close an entry using the same flow as done." },
+    { command: "/status", template: "/status #0001 in-progress", description: "Set an entry status to open, in-progress, done, or archived." },
+    { command: "/search", template: "/search ", description: "Search and open matching timeline entries." },
+    { command: "/export", template: "/export", description: "Download the current workspace as JSON." },
+    { command: "/import", template: "/import", description: "Restore entries from an exported JSON backup." },
+    { command: "/help", template: "/help", description: "Show the built-in MemoryVault command guide." }
+];
+let filteredSlashCommands = [];
+let activeSlashCommandIndex = -1;
 
 function isMobileViewport() {
     return window.innerWidth < 768;
 }
 
 function getTimelineLayoutMode() {
-    return isMobileViewport() ? timelineLayoutMode : "stream";
+    return timelineLayoutMode;
 }
 
 function syncTimelineLayoutToggle() {
@@ -103,6 +116,100 @@ function setTimelineLayoutMode(mode) {
     if (currentViewEnv === "timeline") {
         renderFilteredTimeline();
     }
+}
+
+function getSlashCommandQuery() {
+    if (!chatInput) return null;
+    const trimmedValue = chatInput.value.trimStart();
+    if (!trimmedValue.startsWith("/") || trimmedValue.includes(" ")) return null;
+    return trimmedValue.slice(1).toLowerCase();
+}
+
+function hideSlashCommandMenu() {
+    filteredSlashCommands = [];
+    activeSlashCommandIndex = -1;
+    if (!slashCommandMenu) return;
+    slashCommandMenu.classList.add("hidden");
+    slashCommandMenu.innerHTML = "";
+}
+
+function renderSlashCommandMenu() {
+    if (!slashCommandMenu) return;
+    if (filteredSlashCommands.length === 0) {
+        hideSlashCommandMenu();
+        return;
+    }
+
+    slashCommandMenu.innerHTML = filteredSlashCommands.map((item, index) => {
+        const isActive = index === activeSlashCommandIndex;
+        return `
+            <button
+                type="button"
+                data-slash-index="${index}"
+                class="w-full flex items-start gap-3 px-4 py-3 text-left transition ${isActive ? 'bg-blue-500/12 text-white' : 'text-gray-300 hover:bg-gray-800/80'}"
+            >
+                <span class="text-2xl leading-none ${isActive ? 'text-blue-300' : 'text-blue-400/90'}">/</span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-base font-semibold leading-tight">${escapeHtml(item.command.slice(1))}</span>
+                    <span class="block text-xs text-gray-400 mt-1 leading-5">${escapeHtml(item.description)}</span>
+                </span>
+            </button>
+        `;
+    }).join("");
+
+    slashCommandMenu.classList.remove("hidden");
+}
+
+function updateSlashCommandMenu() {
+    const query = getSlashCommandQuery();
+    if (query === null) {
+        hideSlashCommandMenu();
+        return;
+    }
+
+    if (query.length === 0) {
+        filteredSlashCommands = [...slashCommandDefinitions];
+    } else {
+        const prefixMatches = slashCommandDefinitions.filter((item) => item.command.slice(1).toLowerCase().startsWith(query));
+        const secondaryMatches = slashCommandDefinitions.filter((item) => {
+            const normalizedCommand = item.command.slice(1).toLowerCase();
+            return !normalizedCommand.startsWith(query) && item.description.toLowerCase().includes(query);
+        });
+        filteredSlashCommands = [...prefixMatches, ...secondaryMatches];
+    }
+
+    if (filteredSlashCommands.length === 0) {
+        hideSlashCommandMenu();
+        return;
+    }
+
+    activeSlashCommandIndex = Math.min(
+        Math.max(activeSlashCommandIndex, 0),
+        filteredSlashCommands.length - 1
+    );
+
+    if (activeSlashCommandIndex === -1) {
+        activeSlashCommandIndex = 0;
+    }
+
+    renderSlashCommandMenu();
+}
+
+function applySlashCommandSuggestion(index) {
+    const selected = filteredSlashCommands[index];
+    if (!selected || !chatInput) return;
+    chatInput.value = selected.template;
+    autoResizeChatInput();
+    chatInput.focus();
+    const caretPosition = chatInput.value.length;
+    chatInput.setSelectionRange(caretPosition, caretPosition);
+    hideSlashCommandMenu();
+}
+
+function moveSlashCommandSelection(direction) {
+    if (filteredSlashCommands.length === 0) return;
+    activeSlashCommandIndex = (activeSlashCommandIndex + direction + filteredSlashCommands.length) % filteredSlashCommands.length;
+    renderSlashCommandMenu();
 }
 
 function setQuickBucketDropdownOpen(isOpen) {
@@ -264,16 +371,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // Auto-focus chat input field on '/' keypress
     document.addEventListener("keydown", (e) => {
-        if (e.key === "/" && document.activeElement !== chatInput) {
+        if ((e.key === "/" || e.code === "Slash") && document.activeElement !== chatInput) {
             e.preventDefault();
             chatInput.focus();
-            chatInput.value = "";
+            chatInput.value = "/";
+            autoResizeChatInput();
+            updateSlashCommandMenu();
         }
         // Cmd+K or Ctrl+K search triggers focus
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
             e.preventDefault();
             chatInput.focus();
             chatInput.value = "/search ";
+            autoResizeChatInput();
+            hideSlashCommandMenu();
         }
     });
 
@@ -373,13 +484,56 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (chatInput) {
         chatInput.addEventListener("keydown", (e) => {
+            if (!slashCommandMenu?.classList.contains("hidden")) {
+                if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    moveSlashCommandSelection(1);
+                    return;
+                }
+                if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    moveSlashCommandSelection(-1);
+                    return;
+                }
+                if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+                    e.preventDefault();
+                    applySlashCommandSuggestion(activeSlashCommandIndex);
+                    return;
+                }
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    hideSlashCommandMenu();
+                    return;
+                }
+            }
+
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 chatForm.dispatchEvent(new Event("submit"));
             }
         });
         // Auto-resize textarea as user types or pastes content
-        chatInput.addEventListener("input", autoResizeChatInput);
+        chatInput.addEventListener("input", () => {
+            autoResizeChatInput();
+            updateSlashCommandMenu();
+        });
+        chatInput.addEventListener("focus", updateSlashCommandMenu);
+        chatInput.addEventListener("blur", () => {
+            window.setTimeout(() => {
+                if (document.activeElement && slashCommandMenu?.contains(document.activeElement)) return;
+                hideSlashCommandMenu();
+            }, 120);
+        });
+    }
+
+    if (slashCommandMenu) {
+        slashCommandMenu.addEventListener("mousedown", (e) => e.preventDefault());
+        slashCommandMenu.addEventListener("click", (e) => {
+            const button = e.target.closest("button[data-slash-index]");
+            if (!button) return;
+            const nextIndex = Number(button.getAttribute("data-slash-index"));
+            applySlashCommandSuggestion(nextIndex);
+        });
     }
 
     // Wire up Attachment Paperclip click trigger
@@ -1467,7 +1621,7 @@ function renderFilteredTimeline() {
                 </div>
             `;
             
-            html += `<div class="${useCardsLayout ? 'grid grid-cols-2 gap-3 items-start' : 'space-y-4'}">`;
+            html += `<div class="${useCardsLayout ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start' : 'space-y-4'}">`;
             
             groupEntries.forEach(entry => {
                 const dt = new Date(entry.timestamp);
