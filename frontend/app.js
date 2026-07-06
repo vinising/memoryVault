@@ -46,6 +46,7 @@ const attachmentFileInput = document.getElementById("attachmentFileInput");
 const attachmentBtn = document.getElementById("attachmentBtn");
 const searchBtn = document.getElementById("searchBtn");
 const contextChips = document.getElementById("contextChips");
+const timelineOverlayPortal = document.getElementById("timelineOverlayPortal");
 
 // Metric DOMs
 const statTotal = document.getElementById("statTotal");
@@ -639,14 +640,26 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    document.addEventListener("click", () => {
+    document.addEventListener("click", (e) => {
         setQuickBucketDropdownOpen(false);
+
+        const tagFilters = document.getElementById("timelineTagFilters");
+        const clickedInsidePortal = timelineOverlayPortal && timelineOverlayPortal.contains(e.target);
+        const clickedTimelineTagControl = e.target instanceof Element && !!e.target.closest("[data-timeline-tag-control]");
+        if (isTimelineTagFiltersExpanded && tagFilters && !tagFilters.contains(e.target) && !clickedInsidePortal && !clickedTimelineTagControl) {
+            isTimelineTagFiltersExpanded = false;
+            updateTimelineTagFiltersUI();
+        }
     });
 
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
             setQuickBucketDropdownOpen(false);
             closeMobileSidebar();
+            if (isTimelineTagFiltersExpanded) {
+                isTimelineTagFiltersExpanded = false;
+                updateTimelineTagFiltersUI();
+            }
         }
     });
 
@@ -1343,6 +1356,7 @@ function switchView(viewName) {
 let allTimelineEntries = [];
 let activeTimelineStatusFilter = "all";
 let activeTimelineTagFilters = [];
+let isTimelineTagFiltersExpanded = false;
 
 function buildCommaSeparatedSearchQuery(rawValue) {
     return rawValue
@@ -1439,6 +1453,7 @@ async function renderTimelineView() {
 function updateTimelineTagFiltersUI() {
     const tagFiltersContainer = document.getElementById("timelineTagFilters");
     if (!tagFiltersContainer) return;
+    if (timelineOverlayPortal) timelineOverlayPortal.innerHTML = "";
     
     const tagMap = {};
     allTimelineEntries.forEach(entry => {
@@ -1450,26 +1465,104 @@ function updateTimelineTagFiltersUI() {
         }
     });
     
-    const uniqueTags = Object.keys(tagMap).sort();
+    const uniqueTags = Object.keys(tagMap).sort((left, right) => {
+        const countDelta = tagMap[right] - tagMap[left];
+        return countDelta !== 0 ? countDelta : left.localeCompare(right);
+    });
     if (uniqueTags.length === 0) {
         tagFiltersContainer.innerHTML = `<span class="text-[10px] text-gray-500 italic">No tags in timeline items</span>`;
         return;
     }
-    
-    let html = "";
-    uniqueTags.forEach(tag => {
+
+    const prioritizedTags = [
+        ...activeTimelineTagFilters.filter((tag) => uniqueTags.includes(tag)),
+        ...uniqueTags.filter((tag) => !activeTimelineTagFilters.includes(tag))
+    ];
+    let chipsHtml = "";
+    prioritizedTags.forEach(tag => {
         const isActive = activeTimelineTagFilters.includes(tag);
-        const activeClass = isActive 
-            ? "bg-blue-600 border-blue-500 text-white font-black shadow-sm" 
-            : "bg-gray-800 border-gray-700/80 hover:border-gray-600 text-gray-400 hover:text-white";
-            
-        html += `
-            <button type="button" onclick="toggleTimelineTagFilter('${tag}')" class="px-2 py-0.5 rounded border text-[10px] font-mono transition duration-200 ${activeClass}">
-                #${tag} (${tagMap[tag]})
+        const chipStateClass = isActive ? " is-active" : "";
+
+        chipsHtml += `
+            <button type="button" data-timeline-tag-control="true" onclick="toggleTimelineTagFilter('${tag}')" class="timeline-tag-chip${chipStateClass} inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium tracking-[0.01em] transition whitespace-nowrap">
+                <span>#${tag}</span>
+                <span class="timeline-tag-chip-count rounded-full px-1.5 py-0.5 text-[9px] font-semibold">${tagMap[tag]}</span>
             </button>
         `;
     });
-    tagFiltersContainer.innerHTML = html;
+
+    const hasActiveFilters = activeTimelineTagFilters.length > 0;
+    const summaryText = hasActiveFilters
+        ? `${activeTimelineTagFilters.length} active filter${activeTimelineTagFilters.length === 1 ? '' : 's'}`
+        : `${uniqueTags.length} tags`;
+    const activeFilterHtml = activeTimelineTagFilters.map((tag) => `
+        <button type="button" onclick="toggleTimelineTagFilter('${tag}')" class="timeline-tag-pill inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium transition whitespace-nowrap">
+            <span>#${tag}</span>
+            <i class="fa-solid fa-xmark text-[10px] opacity-70"></i>
+        </button>
+    `).join("");
+
+    const hostRect = tagFiltersContainer.getBoundingClientRect();
+    const panelWidth = Math.min(440, Math.max(280, window.innerWidth - 48));
+    const panelLeft = Math.min(Math.max(24, hostRect.left), Math.max(24, window.innerWidth - panelWidth - 24));
+    const panelTop = Math.max(96, hostRect.bottom + 10);
+    const panelStyle = `left:${panelLeft}px; top:${panelTop}px; width:${panelWidth}px; max-height:min(24rem, calc(100vh - ${panelTop + 24}px));`;
+    const mobilePanelLeft = 12;
+    const mobilePanelWidth = Math.max(280, window.innerWidth - (mobilePanelLeft * 2));
+    const mobilePanelStyle = `left:${mobilePanelLeft}px; width:${mobilePanelWidth}px; bottom:calc(env(safe-area-inset-bottom, 0px) + 5.5rem); max-height:min(9.5rem, calc(100vh - 18rem));`;
+    const desktopSheetMarkup = `
+        <button id="timelineTagSheetBackdrop" type="button" onclick="toggleTimelineTagFiltersExpanded()" class="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px]"></button>
+        <div id="timelineTagSheetPanel" class="timeline-tag-sheet fixed z-40 rounded-[18px] px-3 py-3" style="${panelStyle}">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="timeline-tag-label text-[10px] font-semibold">Filter tags</p>
+                    <p class="timeline-tag-subtitle mt-1 text-[10px]">Select one or more tags.</p>
+                </div>
+                <span class="timeline-tag-summary rounded-full px-2.5 py-1 text-[10px] font-medium whitespace-nowrap">${summaryText}</span>
+            </div>
+            <div class="mt-3 overflow-y-auto pr-1 custom-scrollbar" style="max-height:calc(min(24rem, 100vh - ${panelTop + 96}px));">
+                <div class="flex flex-wrap gap-1.5">
+                    ${chipsHtml}
+                </div>
+            </div>
+        </div>
+    `;
+    const mobileSheetMarkup = `
+        <button id="timelineTagSheetBackdrop" type="button" onclick="toggleTimelineTagFiltersExpanded()" class="fixed inset-0 z-30 bg-black/35 backdrop-blur-[2px]"></button>
+        <div id="timelineTagSheetPanel" class="timeline-tag-sheet fixed z-40 rounded-[22px] px-3 py-3" style="${mobilePanelStyle}">
+            <div class="timeline-tag-handle mx-auto mb-2 h-1.5 w-10 rounded-full"></div>
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-2">
+                    <p class="timeline-tag-label text-[10px] font-semibold whitespace-nowrap">Tags</p>
+                    <span class="timeline-tag-summary rounded-full px-2.5 py-1 text-[10px] font-medium whitespace-nowrap">${summaryText}</span>
+                </div>
+                ${hasActiveFilters ? `<button type="button" data-timeline-tag-control="true" onclick="clearTimelineTagFilters()" class="timeline-tag-clear-btn rounded-full px-2.5 py-1.5 text-[10px] font-semibold whitespace-nowrap">Clear</button>` : `<button type="button" data-timeline-tag-control="true" onclick="toggleTimelineTagFiltersExpanded()" class="timeline-tag-icon-btn flex h-8 w-8 items-center justify-center rounded-full"><i class="fa-solid fa-xmark text-[11px]"></i></button>`}
+            </div>
+            <div class="mt-2 overflow-y-auto pr-1 custom-scrollbar" style="max-height:5.5rem;">
+                <div class="flex flex-wrap gap-2">
+                    ${chipsHtml}
+                </div>
+            </div>
+        </div>
+    `;
+
+    tagFiltersContainer.innerHTML = `
+        <div class="relative shrink-0">
+            <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                <button type="button" data-timeline-tag-control="true" onclick="toggleTimelineTagFiltersExpanded()" class="timeline-tag-trigger ${isTimelineTagFiltersExpanded ? 'is-expanded' : ''} inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition whitespace-nowrap">
+                    <i class="fa-solid fa-hashtag text-[11px]"></i>
+                    <span>${hasActiveFilters ? `Tags · ${summaryText}` : `Tags · ${uniqueTags.length}`}</span>
+                    <i class="fa-solid ${isTimelineTagFiltersExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px] opacity-70"></i>
+                </button>
+                ${hasActiveFilters ? `<div class="flex flex-wrap items-center gap-2 min-w-0">${activeFilterHtml}</div>` : ""}
+                ${hasActiveFilters ? `<button type="button" data-timeline-tag-control="true" onclick="clearTimelineTagFilters()" class="timeline-tag-clear-btn rounded-full px-3 py-2 text-[11px] font-semibold transition whitespace-nowrap">Clear</button>` : ""}
+            </div>
+        </div>
+    `;
+
+    if (isTimelineTagFiltersExpanded && timelineOverlayPortal) {
+        timelineOverlayPortal.innerHTML = isMobileViewport() ? mobileSheetMarkup : desktopSheetMarkup;
+    }
 }
 
 function selectTimelineStatusFilter(status) {
@@ -1500,6 +1593,22 @@ function toggleTimelineTagFilter(tag) {
 }
 
 window.toggleTimelineTagFilter = toggleTimelineTagFilter;
+
+function toggleTimelineTagFiltersExpanded() {
+    isTimelineTagFiltersExpanded = !isTimelineTagFiltersExpanded;
+    updateTimelineTagFiltersUI();
+}
+
+window.toggleTimelineTagFiltersExpanded = toggleTimelineTagFiltersExpanded;
+
+function clearTimelineTagFilters() {
+    activeTimelineTagFilters = [];
+    isTimelineTagFiltersExpanded = false;
+    updateTimelineTagFiltersUI();
+    renderFilteredTimeline();
+}
+
+window.clearTimelineTagFilters = clearTimelineTagFilters;
 
 function toggleTimelineCardExpanded(entryId) {
     if (expandedTimelineCards.has(entryId)) {
@@ -2922,7 +3031,7 @@ async function renderExploreTagsCloud() {
                 }
             });
             
-            const maxTags = isMobileViewport() ? 6 : 10;
+            const maxTags = isMobileViewport() ? 8 : 10;
             const sortedTags = Object.entries(tagCounts)
                 .sort((a,b) => b[1] - a[1])
                 .slice(0, maxTags);
@@ -2932,7 +3041,7 @@ async function renderExploreTagsCloud() {
                 sortedTags.forEach(([tag, count]) => {
                     const btn = document.createElement("button");
                     btn.type = "button";
-                    btn.className = "px-3 py-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full text-xs font-semibold shadow-sm transition transform active:scale-95 flex items-center space-x-1.5 shrink-0";
+                    btn.className = "px-3 py-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full text-xs font-semibold shadow-sm transition transform active:scale-95 inline-flex items-center space-x-1.5";
                     btn.innerHTML = `<span>${tag}</span><span class="text-3xs text-gray-500 bg-gray-950 px-1.5 py-0.5 rounded-full">${count}</span>`;
                     btn.onclick = () => {
                         chatInput.value = '/search ' + tag;

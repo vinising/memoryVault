@@ -45,6 +45,26 @@
             font-family: "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
         }
 
+        html, body {
+            min-height: 100%;
+        }
+
+        .app-shell {
+            height: 100vh;
+            min-height: 100vh;
+        }
+
+        @supports (height: 100dvh) {
+            .app-shell {
+                height: 100dvh;
+                min-height: 100dvh;
+            }
+        }
+
+        .app-workspace {
+            min-height: 0;
+        }
+
         .text-2xs { font-size: 0.65rem; line-height: 0.8rem; }
         .text-3xs { font-size: 0.55rem; line-height: 0.7rem; }
 
@@ -124,9 +144,206 @@
                 display: inline-flex;
             }
         }
+
+        .timeline-tag-sheet {
+            border: 1px solid rgba(39, 50, 68, 0.92);
+            background: rgba(13, 17, 23, 0.96);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+            backdrop-filter: blur(18px);
+        }
+
+        .timeline-tag-handle {
+            background: rgba(100, 116, 139, 0.55);
+        }
+
+        .timeline-tag-label {
+            color: #7f8da3;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .timeline-tag-subtitle {
+            color: #8b98ad;
+        }
+
+        .timeline-tag-summary {
+            border: 1px solid rgba(39, 50, 68, 0.82);
+            background: rgba(17, 24, 39, 0.72);
+            color: #98a6ba;
+        }
+
+        .timeline-tag-trigger {
+            border: 1px solid rgba(55, 65, 81, 0.92);
+            background: rgba(17, 24, 39, 0.82);
+            color: #cbd5e1;
+        }
+
+        .timeline-tag-trigger:hover {
+            border-color: rgba(75, 85, 99, 0.95);
+            color: #f8fafc;
+        }
+
+        .timeline-tag-trigger.is-expanded {
+            border-color: rgba(96, 165, 250, 0.42);
+            background: rgba(37, 99, 235, 0.14);
+            color: #dbeafe;
+        }
+
+        .timeline-tag-chip {
+            border: 1px solid rgba(71, 85, 105, 0.58);
+            background: rgba(17, 24, 39, 0.7);
+            color: #d1d9e6;
+        }
+
+        .timeline-tag-chip:hover {
+            border-color: rgba(100, 116, 139, 0.92);
+            background: rgba(17, 24, 39, 0.84);
+            color: #f8fafc;
+        }
+
+        .timeline-tag-chip.is-active {
+            border-color: rgba(96, 165, 250, 0.45);
+            background: rgba(37, 99, 235, 0.18);
+            color: #eff6ff;
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.16);
+        }
+
+        .timeline-tag-chip-count {
+            background: rgba(15, 23, 42, 0.55);
+            color: #8b98ad;
+        }
+
+        .timeline-tag-chip.is-active .timeline-tag-chip-count {
+            background: rgba(15, 23, 42, 0.28);
+            color: #dbeafe;
+        }
+
+        .timeline-tag-pill {
+            border: 1px solid rgba(96, 165, 250, 0.26);
+            background: rgba(37, 99, 235, 0.12);
+            color: #cfe0ff;
+        }
+
+        .timeline-tag-pill:hover {
+            background: rgba(37, 99, 235, 0.18);
+        }
+
+        .timeline-tag-clear-btn {
+            border: 1px solid rgba(96, 165, 250, 0.24);
+            background: rgba(37, 99, 235, 0.12);
+            color: #bfdbfe;
+        }
+
+        .timeline-tag-clear-btn:hover {
+            background: rgba(37, 99, 235, 0.18);
+        }
+
+        .timeline-tag-icon-btn {
+            border: 1px solid rgba(55, 65, 81, 0.88);
+            background: rgba(17, 24, 39, 0.76);
+            color: #98a6ba;
+        }
+
+        .timeline-tag-icon-btn:hover {
+            border-color: rgba(75, 85, 99, 0.95);
+            color: #e2e8f0;
+        }
+
+        .mobile-composer-footer {
+            position: sticky;
+            bottom: 0;
+            z-index: 30;
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.6rem);
+        }
+
+        @media (min-width: 769px) {
+            .mobile-composer-footer {
+                position: relative;
+                bottom: auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-main-panel {
+                min-height: 0;
+            }
+
+            .mobile-scroll-pane {
+                min-height: 0;
+                padding-top: 0.5rem;
+                padding-bottom: 0.75rem;
+            }
+
+            .mobile-empty-state {
+                gap: 0.6rem;
+                padding-top: 0.15rem;
+                padding-bottom: 0.35rem;
+            }
+
+            .mobile-empty-state-icon {
+                width: 2.75rem;
+                height: 2.75rem;
+                margin-bottom: 0;
+            }
+
+            .mobile-empty-state-title {
+                font-size: 1.55rem;
+                line-height: 1.06;
+            }
+
+            .mobile-empty-state-copy {
+                margin-top: 0.45rem;
+                font-size: 0.92rem;
+                line-height: 1.45;
+            }
+
+            .mobile-explore-cloud {
+                padding-top: 0;
+            }
+
+            .mobile-explore-tags {
+                justify-content: center;
+                flex-wrap: wrap;
+                overflow: visible;
+                padding-left: 0;
+                padding-right: 0;
+                gap: 0.5rem;
+            }
+        }
+
+        @media (max-width: 240px) {
+            .mobile-scroll-pane {
+                padding-top: 0.35rem;
+                padding-bottom: 0.5rem;
+            }
+
+            .mobile-empty-state {
+                gap: 0.45rem;
+            }
+
+            .mobile-empty-state-icon {
+                width: 2.4rem;
+                height: 2.4rem;
+            }
+
+            .mobile-empty-state-title {
+                font-size: 1.2rem;
+                line-height: 1.05;
+            }
+
+            .mobile-empty-state-copy {
+                margin-top: 0.3rem;
+                font-size: 0.78rem;
+                line-height: 1.3;
+            }
+
+            .mobile-explore-cloud {
+                display: none;
+            }
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="app-shell flex flex-col overflow-hidden">
 
     <!-- Top Mobile Control Navigation Header -->
     <header class="md:hidden flex items-center justify-between p-4 bg-gray-900 border-b border-gray-800 shrink-0">
@@ -147,7 +364,7 @@
 
     <div id="mobileSidebarBackdrop" class="hidden md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"></div>
 
-    <div class="flex-1 flex overflow-hidden">
+    <div class="app-workspace flex-1 flex overflow-hidden min-h-0">
         
         <!-- Left Control & Metrics Sidebar Panel -->
         <aside id="sidebar" class="mobile-sidebar md:transform-none fixed md:relative inset-y-0 left-0 h-full w-72 max-w-[85vw] md:w-72 sidebar flex flex-col shrink-0 z-50 md:z-auto shadow-2xl md:shadow-none">
@@ -279,7 +496,7 @@
         </aside>
 
         <!-- Main Chat Panel workspace -->
-        <main class="flex-1 flex flex-col h-full bg-[#0f1420] overflow-hidden relative">
+        <main class="mobile-main-panel flex-1 flex flex-col h-full bg-[#0f1420] overflow-hidden relative">
             
             <!-- Content workspace header controls -->
             <div id="desktopHeader" class="flex flex-col md:flex-row p-3 md:p-4 border-b border-gray-800 justify-between items-stretch md:items-center gap-3 bg-gray-900/40 backdrop-blur shrink-0">
@@ -316,20 +533,20 @@
             </div>
 
             <!-- Central Transcript Scroll pane -->
-            <section id="chatPane" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+            <section id="chatPane" class="mobile-scroll-pane flex-1 overflow-y-auto p-4 md:p-6 space-y-4 min-h-0">
                 <!-- Friendly Hybrid Empty State -->
-                <div id="emptyStateContainer" class="flex flex-col items-center justify-start md:justify-center h-auto md:h-full max-w-3xl mx-auto text-center space-y-4 md:space-y-6 animate-fade-in pb-6 md:pb-12 pt-4 md:pt-0 px-1 sm:px-0">
-                    <div class="w-14 h-14 md:w-16 md:h-16 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20 mb-1 md:mb-2">
+                <div id="emptyStateContainer" class="mobile-empty-state flex flex-col items-center justify-start md:justify-center h-auto md:h-full max-w-3xl mx-auto text-center space-y-4 md:space-y-6 animate-fade-in pb-6 md:pb-12 pt-4 md:pt-0 px-1 sm:px-0">
+                    <div class="mobile-empty-state-icon w-14 h-14 md:w-16 md:h-16 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20 mb-1 md:mb-2">
                         <i class="fa-solid fa-face-smile-wink text-2xl md:text-3xl text-blue-400"></i>
                     </div>
                     <div>
-                        <h2 class="text-xl sm:text-3xl font-extrabold text-white tracking-tight">What's on your mind today?</h2>
-                        <p class="text-gray-400 mt-2 md:mt-3 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">Quickly capture your thoughts, tasks, and issues. We'll automatically organize them.</p>
+                        <h2 class="mobile-empty-state-title text-xl sm:text-3xl font-extrabold text-white tracking-tight">What's on your mind today?</h2>
+                        <p class="mobile-empty-state-copy text-gray-400 mt-2 md:mt-3 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">Quickly capture your thoughts, tasks, and issues. We'll automatically organize them.</p>
                     </div>
 
-                    <div id="exploreTagsCloud" class="w-full pt-2 md:pt-4">
+                    <div id="exploreTagsCloud" class="mobile-explore-cloud w-full pt-2 md:pt-4">
                         <p class="text-xs font-bold text-gray-500 uppercase tracking-[0.22em] mb-3 md:mb-4">Explore Your Day</p>
-                        <div id="dynamicTagsList" class="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 overflow-x-auto sm:overflow-visible hide-scrollbar px-2 sm:px-0 w-full">
+                        <div id="dynamicTagsList" class="mobile-explore-tags flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 overflow-x-auto sm:overflow-visible hide-scrollbar px-2 sm:px-0 w-full">
                             <!-- Dynamic tag pills will be injected here. E.g.: -->
                             <div class="italic text-xs text-gray-500">Loading your knowledge tags...</div>
                         </div>
@@ -361,22 +578,22 @@
                         </div>
                     </div>
 
-                    <div class="px-2 space-y-3">
-                        <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
-                            <div class="flex flex-1 items-center gap-2 rounded-2xl border border-gray-800 bg-gray-900/80 px-3 py-2 shadow-sm">
-                                <i class="fa-solid fa-magnifying-glass text-xs text-gray-500"></i>
-                                <input id="timelineSearchQuery" type="text" placeholder="Search notes, tags, or use comma-separated keywords" class="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none" onkeydown="if (event.key === 'Enter') { event.preventDefault(); triggerTimelineSearch(); }" />
-                                <button type="button" onclick="triggerTimelineSearch()" class="shrink-0 rounded-xl bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white transition">Search</button>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <select id="timelineSortOrder" onchange="triggerTimelineSearch()" class="rounded-2xl border border-gray-800 bg-gray-900/80 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+                    <div class="px-2 space-y-2.5">
+                        <div class="flex items-center gap-2 rounded-[24px] border border-gray-800 bg-gray-900/75 px-4 py-2 shadow-sm">
+                            <i class="fa-solid fa-magnifying-glass text-xs text-gray-500"></i>
+                            <input id="timelineSearchQuery" type="text" placeholder="Search notes, tags, or use comma-separated keywords" class="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none" onkeydown="if (event.key === 'Enter') { event.preventDefault(); triggerTimelineSearch(); }" />
+                            <button type="button" onclick="triggerTimelineSearch()" class="shrink-0 rounded-full bg-blue-600 hover:bg-blue-500 px-4 py-2 text-xs font-bold text-white transition">Search</button>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 md:flex-nowrap md:w-full">
+                            <div class="flex items-center gap-2 shrink-0">
+                                <select id="timelineSortOrder" onchange="triggerTimelineSearch()" class="rounded-full border border-gray-800 bg-gray-900/75 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
                                     <option value="recency">Newest first</option>
                                     <option value="relevance">Best match</option>
                                 </select>
-                                <button type="button" onclick="clearTimelineSearch()" class="rounded-2xl border border-gray-800 bg-gray-900/80 hover:border-gray-700 hover:text-white px-3 py-2 text-xs font-semibold text-gray-400 transition">Clear</button>
+                                <button type="button" onclick="clearTimelineSearch()" class="rounded-full border border-gray-800 bg-gray-900/75 hover:border-gray-700 hover:text-white px-3 py-2 text-xs font-semibold text-gray-400 transition">Clear</button>
                             </div>
+                            <div id="timelineTagFilters" class="min-w-0 shrink-0 md:ml-auto"></div>
                         </div>
-                        <div id="timelineTagFilters" class="flex flex-wrap gap-2"></div>
                     </div>
                     
                     <!-- Soft Journal Timeline Track -->
@@ -436,7 +653,7 @@
             </section>
 
             <!-- Bottom inputs interface container -->
-            <footer id="composerFooter" class="w-full p-2.5 md:p-4 shrink-0 relative bg-[#0f1420]/95 border-t border-gray-900 flex flex-col items-center">
+            <footer id="composerFooter" class="mobile-composer-footer w-full p-2.5 md:p-4 shrink-0 relative bg-[#0f1420]/95 border-t border-gray-900 flex flex-col items-center">
                 <!-- Action Suggestion Chips (ChatGPT/Tiimo Style) -->
                 <div id="contextChips" class="hidden md:flex w-full max-w-4xl mx-auto mb-3 px-2 overflow-x-auto whitespace-nowrap hide-scrollbar space-x-2">
                     <button type="button" onclick="runContextChipCommand('🎯 Add a Goal')" class="inline-flex items-center space-x-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition transform active:scale-95">
@@ -574,8 +791,10 @@
         </div>
     </div>
 
+    <div id="timelineOverlayPortal"></div>
+
     <!-- App Logical controller App.js -->
-    <script src="/static/app.js?v=10"></script>
+    <script src="/static/app.js?v=13"></script>
 
     <!-- Register service worker automatically -->
     <script>

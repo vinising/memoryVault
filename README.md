@@ -39,7 +39,9 @@ Start the server asynchronously in a visible background terminal using our autom
 - **macOS / Linux**: `./start_server.sh`
 - **Windows**: `start_server.bat`
 
-*This boots uvicorn server at `http://127.0.0.1:8000` and pops your browser window immediately.*
+*This boots uvicorn on `0.0.0.0:8000` by default so other devices on the same LAN can connect, while still opening your local browser at `http://localhost:8000/`.*
+
+*To keep it local-only, start with `MEMORYVAULT_HOST=127.0.0.1 ./start_server.sh` on macOS/Linux or set `MEMORYVAULT_HOST=127.0.0.1` before `start_server.bat` on Windows.*
 
 ---
 
