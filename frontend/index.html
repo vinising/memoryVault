@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MemoryVault — Agile Backlog Chat</title>
+    <title>MemoryVault — Backlog Chat Assistant</title>
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#161b22">
     <!-- Load Tailwind CSS CDN -->
@@ -12,6 +12,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
+        :root {
+            --mv-bg: #0d1117;
+            --mv-surface: #131a27;
+            --mv-surface-elevated: #161f2e;
+            --mv-border: #273244;
+            --mv-text: #d6deea;
+            --mv-text-muted: #8b98ad;
+            --mv-accent: #3b82f6;
+            --mv-accent-strong: #2563eb;
+        }
+
         /* Custom scrollbar styling styled for Dark UI rules */
         ::-webkit-scrollbar {
             width: 6px;
@@ -29,14 +40,26 @@
         }
         
         body {
-            background-color: #0d1117;
-            color: #c9d1d9;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--mv-bg);
+            color: var(--mv-text);
+            font-family: "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+        }
+
+        .text-2xs { font-size: 0.65rem; line-height: 0.8rem; }
+        .text-3xs { font-size: 0.55rem; line-height: 0.7rem; }
+
+        .hide-scrollbar {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
         }
 
         /* Glassmorphism sidebar for high-end look */
-                .sidebar {
-            background-color: #161b22;
+        .sidebar {
+            background-color: var(--mv-surface);
             border-right: 1px solid #30363d;
             transition: width 0.3s ease, transform 0.3s ease;
         }
@@ -65,7 +88,7 @@
         }
         
         .bubble-system {
-            background-color: #161b22;
+            background-color: var(--mv-surface);
             border: 1px solid #30363d;
             border-bottom-left-radius: 6px;
             border-top-right-radius: 24px;
@@ -81,8 +104,19 @@
                 transition: transform 0.3s ease;
                 z-index: 50;
             }
+
             .mobile-sidebar.open {
                 transform: translateX(0);
+            }
+
+            .mobile-tab-label {
+                display: none;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .mobile-tab-short {
+                display: none;
             }
         }
     </style>
@@ -106,10 +140,22 @@
         </div>
     </header>
 
+    <div id="mobileSidebarBackdrop" class="hidden md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"></div>
+
     <div class="flex-1 flex overflow-hidden">
         
         <!-- Left Control & Metrics Sidebar Panel -->
-                <aside id="sidebar" class="mobile-sidebar md:transform-none fixed md:relative h-full w-80 sidebar flex flex-col shrink-0">
+        <aside id="sidebar" class="mobile-sidebar md:transform-none fixed md:relative inset-y-0 left-0 h-full w-72 max-w-[85vw] md:w-72 sidebar flex flex-col shrink-0 z-50 md:z-auto shadow-2xl md:shadow-none">
+            <div class="md:hidden flex items-center justify-between p-4 border-b border-gray-800">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Workspace</p>
+                    <h2 class="text-lg font-bold text-white mt-1">MemoryVault</h2>
+                </div>
+                <button id="mobileSidebarCloseBtn" type="button" class="h-10 w-10 rounded-full border border-gray-800 bg-gray-900 text-gray-300 hover:text-white transition flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
             <!-- Sidebar Header For Desktop -->
             <div class="hidden md:flex items-center justify-between p-5 border-b border-gray-800">
                 <div class="flex items-center space-x-3">
@@ -128,29 +174,29 @@
             </div>
 
             <!-- Scrollable Metrics & Actions Center -->
-            <div class="flex-1 overflow-y-auto p-5 space-y-6">
+            <div class="flex-1 overflow-y-auto p-4 md:p-5 space-y-5">
                 
                 <!-- Backlog Metrics Widget -->
                 <div>
-                     <h2 class="text-xs font-bold text-gray-500 tracking-wide mb-3 flex items-center space-x-1.5">
+                     <h2 class="text-xs font-bold text-gray-500 tracking-wide mb-2.5 flex items-center space-x-1.5">
                          <i class="fa-solid fa-wave-square"></i>
                          <span>Workspace Pulse</span>
                      </h2>
                      <div class="grid grid-cols-2 gap-2">
-                          <div class="bg-gray-800/20 rounded-[20px] p-4 text-center transition-all hover:bg-gray-800/40">
-                              <div id="statTotal" class="text-2xl font-extrabold text-white">0</div>
+                          <div class="bg-gray-800/20 rounded-2xl p-3 text-center transition-all hover:bg-gray-800/40">
+                              <div id="statTotal" class="text-xl font-extrabold text-white">0</div>
                               <div class="text-xs text-gray-400 mt-1 font-medium">Total Logs</div>
                           </div>
-                          <div class="bg-blue-500/5 rounded-[20px] p-4 text-center transition-all hover:bg-blue-500/10">
-                              <div id="statProgress" class="text-2xl font-extrabold text-blue-400">0</div>
+                          <div class="bg-blue-500/5 rounded-2xl p-3 text-center transition-all hover:bg-blue-500/10">
+                              <div id="statProgress" class="text-xl font-extrabold text-blue-400">0</div>
                               <div class="text-xs text-blue-400 mt-1 font-medium">In Progress</div>
                           </div>
-                          <div class="bg-yellow-500/5 rounded-[20px] p-4 text-center transition-all hover:bg-yellow-500/10">
-                              <div id="statOpen" class="text-2xl font-extrabold text-yellow-400">0</div>
+                          <div class="bg-yellow-500/5 rounded-2xl p-3 text-center transition-all hover:bg-yellow-500/10">
+                              <div id="statOpen" class="text-xl font-extrabold text-yellow-400">0</div>
                               <div class="text-xs text-yellow-400 mt-1 font-medium">Open Tasks</div>
                           </div>
-                          <div class="bg-green-500/5 rounded-[20px] p-4 text-center transition-all hover:bg-green-500/10">
-                              <div id="statDone" class="text-2xl font-extrabold text-green-400">0</div>
+                          <div class="bg-green-500/5 rounded-2xl p-3 text-center transition-all hover:bg-green-500/10">
+                              <div id="statDone" class="text-xl font-extrabold text-green-400">0</div>
                               <div class="text-xs text-green-400 mt-1 font-medium">Completed</div>
                           </div>
                      </div>
@@ -158,17 +204,17 @@
 
                 <!-- Category Visual Charts Wrapper -->
                 <div>
-                    <h2 class="text-xs font-bold text-gray-500 tracking-wide mb-3 flex items-center space-x-1.5">
+                    <h2 class="text-xs font-bold text-gray-500 tracking-wide mb-2.5 flex items-center space-x-1.5">
                         <i class="fa-solid fa-chart-pie"></i>
                         <span>Knowledge Allocation</span>
                     </h2>
-                    <div id="allocationBarsContainer" class="bg-gray-800/20 p-4 rounded-[24px] space-y-4">
+                    <div id="allocationBarsContainer" class="bg-gray-800/20 p-3 rounded-2xl space-y-3.5">
                         <!-- Dynamically populated from API in app.js -->
                     </div>
                 </div>
 
                 <!-- Collapsible Settings & Dev Tools -->
-                <details class="group bg-gray-800/20 rounded-[24px] overflow-hidden transition-all duration-300">
+                <details class="group bg-gray-800/20 rounded-2xl overflow-hidden transition-all duration-300">
                     <summary class="p-4 cursor-pointer flex justify-between items-center text-sm font-semibold text-gray-300 focus:outline-none">
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-sliders text-gray-500"></i>
@@ -228,31 +274,34 @@
         </aside>
 
         <!-- Main Chat Panel workspace -->
-        <main class="flex-1 flex flex-col h-full bg-gray-950 overflow-hidden relative">
+        <main class="flex-1 flex flex-col h-full bg-[#0f1420] overflow-hidden relative">
             
             <!-- Content workspace header controls -->
-            <div id="desktopHeader" class="flex p-4 border-b border-gray-800 justify-between items-center bg-gray-900/40 shrink-0">
-                <div class="flex items-center space-x-1.5 bg-gray-950/60 p-1 rounded-xl border border-gray-800/80">
-                    <button id="tabChatBtn" type="button" class="flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow">
+            <div id="desktopHeader" class="flex flex-col md:flex-row p-3 md:p-4 border-b border-gray-800 justify-between items-stretch md:items-center gap-3 bg-gray-900/40 backdrop-blur shrink-0">
+                <div class="flex items-center gap-1.5 bg-gray-950/80 p-1 rounded-2xl border border-gray-800/80 w-full md:w-auto overflow-x-auto hide-scrollbar">
+                    <button id="tabChatBtn" type="button" class="flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold bg-blue-600 text-white rounded-xl transition shadow shrink-0">
                         <i class="fa-solid fa-comments"></i>
-                        <span>Console Chat</span>
+                        <span class="mobile-tab-label sm:inline">Console Chat</span>
+                        <span class="mobile-tab-short sm:hidden">Chat</span>
                     </button>
-                    <button id="tabTimelineBtn" type="button" class="flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition">
+                    <button id="tabTimelineBtn" type="button" class="flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold text-gray-400 hover:text-white rounded-xl transition shrink-0">
                         <i class="fa-solid fa-clock-rotate-left"></i>
-                        <span>Idea Timeline</span>
+                        <span class="mobile-tab-label sm:inline">Note Timeline</span>
+                        <span class="mobile-tab-short sm:hidden">Timeline</span>
                     </button>
-                    <button id="tabGraphBtn" type="button" class="flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition">
+                    <button id="tabGraphBtn" type="button" class="flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold text-gray-400 hover:text-white rounded-xl transition shrink-0">
                         <i class="fa-solid fa-circle-nodes"></i>
-                        <span>Knowledge Map</span>
+                        <span class="mobile-tab-label sm:inline">Knowledge Map</span>
+                        <span class="mobile-tab-short sm:hidden">Graph</span>
                     </button>
                 </div>
-                <div class="flex space-x-2 items-center">
+                <div class="hidden md:flex space-x-2 items-center justify-start md:justify-end w-full md:w-auto flex-wrap">
                     <span id="offlineIndicator" class="hidden text-xs text-yellow-500 font-bold bg-yellow-500/10 px-2.5 py-1 rounded-full border border-yellow-500/20 flex items-center space-x-1">
                         <i class="fa-solid fa-circle-nodes animate-pulse"></i>
                         <span class="hidden sm:inline">Offline Sync</span>
                     </span>
                     <!-- LLM Summary Trigger -->
-                    <button id="summarizeBtn" class="flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow-md shrink-0">
+                    <button id="summarizeBtn" class="hidden md:flex items-center justify-center space-x-2 px-4 py-2 text-sm md:text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition shadow-md shrink-0 w-auto md:min-w-[100px]">
                         <i class="fa-solid fa-sparkles text-yellow-300"></i>
                         <span>Summarize</span>
                     </button>
@@ -262,18 +311,18 @@
             <!-- Central Transcript Scroll pane -->
             <section id="chatPane" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
                 <!-- Friendly Hybrid Empty State -->
-                <div id="emptyStateContainer" class="flex flex-col items-center justify-center h-full max-w-2xl mx-auto text-center space-y-6 animate-fade-in pb-12">
-                    <div class="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20 mb-2">
-                        <i class="fa-solid fa-face-smile-wink text-3xl text-blue-400"></i>
+                <div id="emptyStateContainer" class="flex flex-col items-center justify-start md:justify-center h-auto md:h-full max-w-3xl mx-auto text-center space-y-4 md:space-y-6 animate-fade-in pb-6 md:pb-12 pt-4 md:pt-0 px-1 sm:px-0">
+                    <div class="w-14 h-14 md:w-16 md:h-16 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20 mb-1 md:mb-2">
+                        <i class="fa-solid fa-face-smile-wink text-2xl md:text-3xl text-blue-400"></i>
                     </div>
                     <div>
-                        <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">What's on your mind today?</h2>
-                        <p class="text-gray-400 mt-3 max-w-sm mx-auto text-sm sm:text-base">Quickly capture your thoughts, tasks, and issues. We'll automatically organize them.</p>
+                        <h2 class="text-xl sm:text-3xl font-extrabold text-white tracking-tight">What's on your mind today?</h2>
+                        <p class="text-gray-400 mt-2 md:mt-3 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">Quickly capture your thoughts, tasks, and issues. We'll automatically organize them.</p>
                     </div>
 
-                    <div id="exploreTagsCloud" class="w-full pt-4">
-                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Explore Your Day</p>
-                        <div id="dynamicTagsList" class="flex flex-wrap justify-center gap-2">
+                    <div id="exploreTagsCloud" class="w-full pt-2 md:pt-4">
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-[0.22em] mb-3 md:mb-4">Explore Your Day</p>
+                        <div id="dynamicTagsList" class="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 overflow-x-auto sm:overflow-visible hide-scrollbar px-2 sm:px-0 w-full">
                             <!-- Dynamic tag pills will be injected here. E.g.: -->
                             <div class="italic text-xs text-gray-500">Loading your knowledge tags...</div>
                         </div>
@@ -283,7 +332,7 @@
 
             <!-- Continuous Timeline Pane -->
                         <!-- Continuous Timeline Pane -->
-            <section id="timelinePane" class="hidden flex-1 overflow-y-auto p-4 md:p-6 bg-gray-950">
+            <section id="timelinePane" class="hidden flex-1 overflow-y-auto p-4 md:p-6 bg-[#0f1420]">
                 <div class="max-w-3xl mx-auto space-y-6">
                     <div class="flex justify-between items-center mb-4 px-2">
                         <div>
@@ -356,13 +405,9 @@
             </section>
 
             <!-- Bottom inputs interface container -->
-            <footer class="p-3 md:p-5 shrink-0 relative bg-gray-950 flex flex-col items-center">
+            <footer id="composerFooter" class="w-full p-3 md:p-5 shrink-0 relative bg-[#0f1420]/95 border-t border-gray-900 flex flex-col items-center">
                 <!-- Action Suggestion Chips (ChatGPT/Tiimo Style) -->
-                <div class="w-full max-w-4xl mx-auto mb-3 px-2 overflow-x-auto whitespace-nowrap hide-scrollbar flex space-x-2">
-                    <button type="button" onclick="runContextChipCommand('✨ Summarize')" class="inline-flex items-center space-x-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition transform active:scale-95">
-                        <i class="fa-solid fa-sparkles text-yellow-500"></i>
-                        <span>Summarize</span>
-                    </button>
+                <div id="contextChips" class="hidden md:flex w-full max-w-4xl mx-auto mb-3 px-2 overflow-x-auto whitespace-nowrap hide-scrollbar space-x-2">
                     <button type="button" onclick="runContextChipCommand('🎯 Add a Goal')" class="inline-flex items-center space-x-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition transform active:scale-95">
                         <i class="fa-solid fa-bullseye text-purple-400"></i>
                         <span>Add a Goal</span>
@@ -386,7 +431,7 @@
                 <input type="file" id="attachmentFileInput" class="hidden" multiple accept="image/*,application/pdf,text/plain">
 
                 <!-- Tools Drawer (Slide-up absolute overlay) -->
-                <div id="quickBucketDropdown" class="hidden absolute bottom-[90px] md:bottom-[100px] left-4 md:left-8 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl p-3 z-50 w-64 md:w-80 transform transition-all duration-300">
+                <div id="quickBucketDropdown" class="hidden fixed md:absolute bottom-[88px] md:bottom-[100px] left-3 right-3 md:left-8 md:right-auto bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl p-3 z-50 w-auto md:w-80 max-h-[60vh] overflow-y-auto transform transition-all duration-300">
                     <p class="text-xs font-bold tracking-wider text-gray-400 mb-2 uppercase px-1">Log a New Box</p>
                     <div class="space-y-1.5">
                         <button type="button" class="w-full flex items-center p-2.5 rounded-xl hover:bg-gray-800 transition group text-left" onclick="selectQuickBucket('GOAL')">
@@ -428,31 +473,31 @@
                     </div>
                 </div>
 
-                <form id="chatForm" class="flex items-center space-x-2 md:space-x-3 w-full max-w-4xl mx-auto bg-gray-900 border border-gray-800 rounded-[24px] pl-2 pr-2 py-2 shadow-sm focus-within:ring-2 focus-within:ring-gray-700 transition-all">
+                <form id="chatForm" class="flex items-end space-x-2 md:space-x-3 w-full max-w-4xl mx-auto bg-gray-900/95 border border-gray-800 rounded-2xl md:rounded-[24px] pl-2 pr-2 py-2 shadow-[0_18px_48px_rgba(0,0,0,0.26)] focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
                     
                     <!-- + Tools Drawer Button -->
-                    <button type="button" id="quickBucketBtn" class="h-10 w-10 shrink-0 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full flex items-center justify-center text-lg font-light transition" title="Open tools drawer">
+                    <button type="button" id="quickBucketBtn" class="h-11 w-11 md:h-10 md:w-10 shrink-0 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full flex items-center justify-center text-lg font-light transition" title="Open tools drawer">
                         <i class="fa-solid fa-plus transition-transform duration-300"></i>
                         <span id="quickBucketVal" class="hidden">TASK</span>
                     </button>
 
                     <!-- Attachment button -->
-                    <button type="button" id="attachmentBtn" class="h-10 w-10 shrink-0 text-gray-400 hover:text-white rounded-full transition flex items-center justify-center" title="Attach multi-modal file/image">
+                    <button type="button" id="attachmentBtn" class="hidden sm:flex h-11 w-11 md:h-10 md:w-10 shrink-0 text-gray-400 hover:text-white rounded-full transition items-center justify-center" title="Attach multi-modal file/image">
                         <i class="fa-solid fa-paperclip"></i>
                     </button>
                     
                     <!-- Console Input field (Pill inside) -->
-                    <div class="flex-1">
-                        <textarea id="chatInput" placeholder="Message MemoryVault... (or specific Bucket | Title)" class="w-full bg-transparent resize-none text-sm text-white placeholder-gray-500 focus:outline-none px-2 py-3 max-h-32 transition"></textarea>
+                    <div class="flex-1 min-w-0">
+                        <textarea id="chatInput" placeholder="Message MemoryVault..." class="w-full min-h-[44px] bg-transparent resize-none text-sm md:text-sm text-white placeholder-gray-500 focus:outline-none px-1 md:px-2 py-2 md:py-3 max-h-32 leading-5 md:leading-6 transition"></textarea>
                     </div>
                     
                     <!-- Search Action Button -->
-                    <button type="button" id="searchBtn" class="h-10 w-10 shrink-0 text-gray-400 hover:text-white rounded-full transition flex items-center justify-center" title="Search entries">
+                    <button type="button" id="searchBtn" class="hidden md:flex h-10 w-10 shrink-0 text-gray-400 hover:text-white rounded-full transition items-center justify-center" title="Search entries">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </button>
 
                     <!-- Send Action Button -->
-                    <button type="submit" class="h-10 w-10 shrink-0 bg-white hover:bg-gray-200 text-gray-900 rounded-full shadow-sm transition flex items-center justify-center transform active:scale-95">
+                    <button type="submit" class="h-11 w-11 md:h-10 md:w-10 shrink-0 bg-white hover:bg-gray-200 text-gray-900 rounded-full shadow-sm transition flex items-center justify-center transform active:scale-95">
                         <i class="fa-solid fa-arrow-up"></i>
                     </button>
                 </form>

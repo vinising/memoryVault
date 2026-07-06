@@ -32,12 +32,15 @@ const quickBucketDropdown = document.getElementById("quickBucketDropdown");
 const bucketModal = document.getElementById("bucketModal");
 const sidebar = document.getElementById("sidebar");
 const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const mobileSidebarBackdrop = document.getElementById("mobileSidebarBackdrop");
+const mobileSidebarCloseBtn = document.getElementById("mobileSidebarCloseBtn");
 const sidebarCollapseBtn = document.getElementById("sidebarCollapseBtn");
 
 const attachmentTray = document.getElementById("attachmentTray");
 const attachmentFileInput = document.getElementById("attachmentFileInput");
 const attachmentBtn = document.getElementById("attachmentBtn");
 const searchBtn = document.getElementById("searchBtn");
+const contextChips = document.getElementById("contextChips");
 
 // Metric DOMs
 const statTotal = document.getElementById("statTotal");
@@ -56,6 +59,49 @@ const barTtQty = document.getElementById("barTtQty");
 const barPtQty = document.getElementById("barPtQty");
 
 const tracesContainer = document.getElementById("tracesContainer");
+
+const baseTabBtnClass = "flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold text-gray-400 hover:text-white rounded-xl transition shrink-0";
+const activeTabBtnClass = "flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold bg-blue-600 text-white rounded-xl transition shadow shrink-0";
+
+function isMobileViewport() {
+    return window.innerWidth < 768;
+}
+
+function setQuickBucketDropdownOpen(isOpen) {
+    if (!quickBucketDropdown) return;
+    quickBucketDropdown.classList.toggle("hidden", !isOpen);
+
+    const icon = quickBucketBtn ? quickBucketBtn.querySelector("i") : null;
+    if (icon) {
+        icon.classList.toggle("rotate-45", isOpen);
+    }
+}
+
+function closeMobileSidebar() {
+    if (!sidebar) return;
+    sidebar.classList.remove("open");
+    if (mobileSidebarBackdrop) mobileSidebarBackdrop.classList.add("hidden");
+}
+
+function toggleMobileSidebar() {
+    if (!sidebar || !isMobileViewport()) return;
+
+    const nextIsOpen = !sidebar.classList.contains("open");
+    sidebar.classList.toggle("open", nextIsOpen);
+    if (mobileSidebarBackdrop) mobileSidebarBackdrop.classList.toggle("hidden", !nextIsOpen);
+}
+
+function syncResponsiveUI() {
+    if (contextChips) {
+        const showChips = currentViewEnv === "chat" && !isMobileViewport();
+        contextChips.classList.toggle("hidden", !showChips);
+        contextChips.classList.toggle("md:flex", showChips);
+    }
+
+    if (chatInput) {
+        chatInput.placeholder = isMobileViewport() ? "Message..." : "Message MemoryVault...";
+    }
+}
 
 // --- STARTUP LOGIC ---
 document.addEventListener("DOMContentLoaded", async () => {
@@ -141,8 +187,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Toggle Mobile menu
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener("click", () => {
-            sidebar.classList.toggle("open");
+            toggleMobileSidebar();
         });
+    }
+
+    if (mobileSidebarCloseBtn) {
+        mobileSidebarCloseBtn.addEventListener("click", closeMobileSidebar);
+    }
+
+    if (mobileSidebarBackdrop) {
+        mobileSidebarBackdrop.addEventListener("click", closeMobileSidebar);
     }
 
     // Toggle Desktop Sidebar collapse
@@ -172,7 +226,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (quickBucketBtn) {
         quickBucketBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            quickBucketDropdown.classList.toggle("hidden");
+            setQuickBucketDropdownOpen(quickBucketDropdown.classList.contains("hidden"));
         });
     }
 
@@ -227,6 +281,41 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // Global Paste Event Listener for Screenshots
+    window.addEventListener("paste", async (e) => {
+        if (e.clipboardData && e.clipboardData.items) {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    const file = items[i].getAsFile();
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    
+                    try {
+                        const headers = {};
+                        if (typeof MEMORYVAULT_TOKEN !== "undefined" && MEMORYVAULT_TOKEN) {
+                            headers["Authorization"] = `Bearer ${MEMORYVAULT_TOKEN}`;
+                        }
+                        const res = await fetch(`${API_BASE}/upload`, {
+                            method: "POST",
+                            headers: headers,
+                            body: formData
+                        });
+                        if (res.ok) {
+                            const uploadedInfo = await res.json();
+                            pendingAttachments.push(uploadedInfo);
+                            renderAttachmentTray(); // update the visual tray
+                        } else {
+                            appendSystemMessage(`❌ Failed to paste attachment`, "error");
+                        }
+                    } catch (err) {
+                        appendSystemMessage(`❌ Network error pasting attachment`, "error");
+                    }
+                }
+            }
+        }
+    });
+
     // Search button click handler
     if (searchBtn) {
         searchBtn.addEventListener("click", () => {
@@ -256,9 +345,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     document.addEventListener("click", () => {
-        if (quickBucketDropdown) quickBucketDropdown.classList.add("hidden");
+        setQuickBucketDropdownOpen(false);
     });
 
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            setQuickBucketDropdownOpen(false);
+            closeMobileSidebar();
+        }
+    });
+
+    syncResponsiveUI();
     setupGraphBindings();
 });
 
@@ -291,9 +388,52 @@ function renderAttachmentTray() {
     attachmentTray.innerHTML = html;
 }
 
-window.removePendingAttachment = (index) => {
+window.removePendingAttachment = async (index) => {
+    const att = pendingAttachments[index];
     pendingAttachments.splice(index, 1);
     renderAttachmentTray();
+    
+    // Call backend to physically delete the file since it's canceled
+    try {
+        const headers = {};
+        if (typeof MEMORYVAULT_TOKEN !== "undefined" && MEMORYVAULT_TOKEN) {
+            headers["Authorization"] = `Bearer ${MEMORYVAULT_TOKEN}`;
+        }
+        await fetch(`${API_BASE}/upload/${att.id}`, {
+            method: "DELETE",
+            headers: headers
+        });
+    } catch(err) {
+        console.error("Failed to delete queued attachment from server", err);
+    }
+};
+
+window.openLightbox = (url) => {
+    let lightbox = document.getElementById("attachmentLightbox");
+    if (!lightbox) {
+        lightbox = document.createElement("div");
+        lightbox.id = "attachmentLightbox";
+        lightbox.className = "fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm cursor-zoom-out p-4 opacity-0 transition-opacity duration-300";
+        lightbox.onclick = () => {
+            lightbox.style.opacity = "0";
+            setTimeout(() => lightbox.remove(), 300);
+        };
+        const img = document.createElement("img");
+        img.id = "lightboxImage";
+        img.className = "max-w-full max-h-full rounded-xl shadow-2xl scale-95 transition-transform duration-300";
+        
+        lightbox.appendChild(img);
+        document.body.appendChild(lightbox);
+    }
+    
+    const img = document.getElementById("lightboxImage");
+    img.src = url;
+    
+    // Animate in
+    setTimeout(() => {
+        lightbox.style.opacity = "1";
+        img.style.transform = "scale(1)";
+    }, 10);
 };
 
 // Sync offline queue if connection is restored
@@ -874,6 +1014,7 @@ async function checkConnectionStatus() {
 
 function switchView(viewName) {
     currentViewEnv = viewName;
+    syncResponsiveUI();
     
     // Reset panes hidden status
     if (chatPane) chatPane.classList.add("hidden");
@@ -881,22 +1022,26 @@ function switchView(viewName) {
     if (graphPane) graphPane.classList.add("hidden");
     
     // Clean tab styling
-    if (tabChatBtn) tabChatBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
-    if (tabTimelineBtn) tabTimelineBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
-    if (tabGraphBtn) tabGraphBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
+    if (tabChatBtn) tabChatBtn.className = baseTabBtnClass;
+    if (tabTimelineBtn) tabTimelineBtn.className = baseTabBtnClass;
+    if (tabGraphBtn) tabGraphBtn.className = baseTabBtnClass;
 
     if (viewName === "chat") {
         if (chatPane) chatPane.classList.remove("hidden");
-        if (tabChatBtn) tabChatBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
+        if (tabChatBtn) tabChatBtn.className = activeTabBtnClass;
         scrollChatBottom();
     } else if (viewName === "timeline") {
         if (timelinePane) timelinePane.classList.remove("hidden");
-        if (tabTimelineBtn) tabTimelineBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
+        if (tabTimelineBtn) tabTimelineBtn.className = activeTabBtnClass;
         renderTimelineView();
     } else if (viewName === "graph") {
         if (graphPane) graphPane.classList.remove("hidden");
-        if (tabGraphBtn) tabGraphBtn.className = "flex items-center space-x-2 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg transition shadow";
+        if (tabGraphBtn) tabGraphBtn.className = activeTabBtnClass;
         fetchAndRenderGraph();
+    }
+
+    if (isMobileViewport()) {
+        closeMobileSidebar();
     }
 }
 
@@ -1020,7 +1165,7 @@ function updateTimelineTagFiltersUI() {
     tagFiltersContainer.innerHTML = html;
 }
 
-window.selectTimelineStatusFilter = (status) => {
+function selectTimelineStatusFilter(status) {
     activeTimelineStatusFilter = status;
     const pills = document.querySelectorAll(".status-filter-pill");
     pills.forEach(pill => {
@@ -1032,9 +1177,11 @@ window.selectTimelineStatusFilter = (status) => {
         }
     });
     renderFilteredTimeline();
-};
+}
 
-window.toggleTimelineTagFilter = (tag) => {
+window.selectTimelineStatusFilter = selectTimelineStatusFilter;
+
+function toggleTimelineTagFilter(tag) {
     const idx = activeTimelineTagFilters.indexOf(tag);
     if (idx > -1) {
         activeTimelineTagFilters.splice(idx, 1);
@@ -1043,7 +1190,9 @@ window.toggleTimelineTagFilter = (tag) => {
     }
     updateTimelineTagFiltersUI();
     renderFilteredTimeline();
-};
+}
+
+window.toggleTimelineTagFilter = toggleTimelineTagFilter;
 
 function renderFilteredTimeline() {
     if (!timelineContainer) return;
@@ -1136,40 +1285,56 @@ function renderFilteredTimeline() {
                 let borderColor = "border-gray-800";
                 let badgeColor = "bg-gray-800 text-gray-400";
                 
-                if (entry.bucket === 'GOAL') { borderColor = "border-purple-500/30"; badgeColor = "bg-purple-500/15 text-purple-400"; }
-                else if (entry.bucket === 'NOTE') { borderColor = "border-blue-500/30"; badgeColor = "bg-blue-500/15 text-blue-400"; }
-                else if (entry.bucket === 'TASK') { borderColor = "border-yellow-500/30"; badgeColor = "bg-yellow-500/15 text-yellow-400"; }
-                else if (entry.bucket === 'ISSUE') { borderColor = "border-red-500/30"; badgeColor = "bg-red-500/15 text-red-400"; }
+                if (entry.bucket === 'GOAL') { borderColor = "border-purple-500 rounded-[20px]"; badgeColor = "bg-gray-800 border border-gray-700 text-purple-400"; }
+                else if (entry.bucket === 'NOTE') { borderColor = "border-blue-500 rounded-[20px]"; badgeColor = "bg-gray-800 border border-gray-700 text-blue-400"; }
+                else if (entry.bucket === 'TASK') { borderColor = "border-yellow-500 rounded-[20px]"; badgeColor = "bg-gray-800 border border-gray-700 text-yellow-400"; }
+                else if (entry.bucket === 'ISSUE') { borderColor = "border-red-500 rounded-[20px]"; badgeColor = "bg-gray-800 border border-gray-700 text-red-400"; }
                 
-                const safeDesc = escapeHtml(entry.description || "");
-                const mdDesc = parseDoubleBracketsInHTML(parseMiniMarkdown(safeDesc));
+                const cleanTitle = escapeHtml(decodeHtmlEntities(entry.title || "Untitled"));
+                const descPreview = escapeHtml(toPlainTextPreview(decodeHtmlEntities(entry.description || ""), 220));
                 
                 let tagsHtml = "";
                 if (entry.tags) {
                     const tagArr = entry.tags.split(",").map(t => t.trim()).filter(Boolean);
                     if (tagArr.length > 0) {
-                        tagsHtml = `<div class="flex flex-wrap gap-1 mt-3">` + 
-                            tagArr.map(t => `<span class="bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full text-3xs font-medium text-gray-400 shrink-0">#${t}</span>`).join("") +
+                        const visibleTags = tagArr.slice(0, 4);
+                        const overflowCount = tagArr.length - visibleTags.length;
+                        tagsHtml = `<div class="flex flex-wrap gap-1.5 mt-3">` + 
+                            visibleTags.map(t => `<span class="bg-gray-900/80 px-2 py-0.5 border border-gray-700/50 rounded-full text-3xs font-medium text-gray-400 shrink-0">#${escapeHtml(decodeHtmlEntities(t))}</span>`).join("") +
+                            (overflowCount > 0 ? `<span class="px-2 py-0.5 rounded-full text-3xs font-semibold text-gray-500 border border-gray-800 bg-gray-950/80">+${overflowCount}</span>` : "") +
                             `</div>`;
                     }
                 }
                 
+                const currentStatus = (entry.status || "open").toLowerCase();
+                const badgeClass = getStatusClass(currentStatus);
+
                 html += `
-                    <div class="bg-gray-900 border ${borderColor} rounded-[20px] p-5 shadow-sm transform transition duration-300 hover:scale-[1.01] hover:shadow-md cursor-pointer flex flex-col group" onclick="snapFocusToNote('${entry.id}')">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center space-x-2">
+                    <article class="bubble-system px-4 py-3.5 md:px-5 md:py-4 transition duration-200 hover:shadow-lg flex flex-col gap-3 group border ${borderColor}">
+                        <div class="flex flex-wrap justify-between items-start gap-3">
+                            <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
                                 <span class="text-xs text-gray-500 font-medium">${timeStr}</span>
+                                <div class="relative inline-block">
+                                    <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge text-3xs px-2.5 py-0.5 pr-6 rounded-full font-bold cursor-pointer transition ${badgeClass} bg-gray-900/90">
+                                        <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
+                                        <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
+                                        <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
+                                        <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                                        <i class="fa-solid fa-chevron-down text-3xs opacity-60"></i>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="text-3xs rounded px-1.5 py-0.5 border border-gray-800 text-gray-500 font-mono">${entry.id}</span>
+                            <span class="text-3xs rounded-lg px-2 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
                         </div>
-                        <h3 class="text-base font-bold text-white mb-1.5 line-clamp-2">${escapeHtml(entry.title)}</h3>
-                        ${mdDesc ? `<div class="text-sm text-gray-400 line-clamp-3 leading-relaxed">${mdDesc}</div>` : ''}
+                        <div class="space-y-2">
+                            <h3 class="text-lg font-semibold text-white leading-tight line-clamp-2">${cleanTitle}</h3>
+                            ${descPreview && descPreview !== 'No description available.' ? `<p class="text-sm text-gray-400 line-clamp-2 leading-7">${descPreview}</p>` : ''}
+                        </div>
                         ${tagsHtml}
-                        <div class="mt-3 flex items-center">
-                            <i class="fa-solid fa-chevron-right text-gray-700 group-hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100 text-xs"></i>
-                        </div>
-                    </div>
+                    </article>
                 `;
             });
             html += `</div>`;
@@ -1305,7 +1470,7 @@ async function deleteCustomBucketAsync(bucketName) {
 function openCustomBucketModal() {
     const modal = document.getElementById("customBucketModal");
     if (modal) modal.classList.remove("hidden");
-    if (quickBucketDropdown) quickBucketDropdown.classList.add("hidden");
+    setQuickBucketDropdownOpen(false);
 }
 
 function closeCustomBucketModal() {
@@ -1327,7 +1492,7 @@ function closeBucketModal() {
 function selectQuickBucket(bucket) {
     currentBucket = bucket;
     if (quickBucketVal) quickBucketVal.textContent = bucket;
-    if (quickBucketDropdown) quickBucketDropdown.classList.add("hidden");
+    setQuickBucketDropdownOpen(false);
     
     // Template Auto-Fill integration
     const match = activeBuckets.find(b => b.name === bucket);
@@ -1384,7 +1549,7 @@ function appendCompletedEntryBubble(entry, offlineQueued = false) {
     const cleanId = entry.id.replace("#", "");
     const bubble = document.createElement("div");
     bubble.id = `entry-bubble-${cleanId}`;
-    bubble.className = "flex flex-col space-y-2 max-w-xl self-start bubble-system px-5 py-4 transition-all duration-300 hover:shadow-lg font-sans";
+    bubble.className = "flex flex-col space-y-2 max-w-md self-start bubble-system px-5 py-4 transition-all duration-300 hover:shadow-lg font-sans";
     
     const labelColor = entry.bucket === 'GOAL' ? 'text-purple-400 border-purple-500/20 bg-purple-500/10' : (entry.bucket === 'NOTE' ? 'text-blue-400 border-blue-500/20 bg-blue-500/10' : (entry.bucket === 'TASK' ? 'text-yellow-400 border-yellow-500/20 bg-yellow-500/10' : 'text-red-400 border-red-500/20 bg-red-500/10'));
     const badgeText = offlineQueued ? "OFFLINE QUEUED" : entry.status.toUpperCase();
@@ -1407,7 +1572,8 @@ function appendCompletedEntryBubble(entry, offlineQueued = false) {
     }
 
     if (entry.description) {
-        innerHTML += `<p class="text-xs text-gray-400 leading-normal italic pl-2.5 border-l-2 border-gray-700 mt-1">${parseDoubleBracketsInHTML(entry.description)}</p>`;
+        const parsedDesc = parseDoubleBracketsInHTML(parseMiniMarkdown(decodeHtmlEntities(entry.description)));
+        innerHTML += `<div class="text-xs text-gray-400 leading-normal italic pl-2.5 border-l-2 border-gray-700 mt-1">${parsedDesc}</div>`;
     }
 
     let attachmentHtml = "";
@@ -1418,7 +1584,7 @@ function appendCompletedEntryBubble(entry, offlineQueued = false) {
             if (isImg) {
                 attachmentHtml += `
                     <div class="relative group max-w-full overflow-hidden rounded-xl border border-gray-800">
-                        <img src="${att.url}" alt="${att.filename}" class="w-full max-h-48 object-cover rounded-xl hover:opacity-90 transition cursor-zoom-in" onclick="window.open('${att.url}', '_blank')">
+                        <img src="${att.url}" alt="${att.filename}" class="w-full max-h-48 object-cover rounded-xl hover:opacity-90 transition cursor-zoom-in" onclick="openLightbox('${att.url}')">
                         <div class="absolute bottom-2 left-2 bg-black/75 backdrop-blur-sm text-3xs font-mono text-gray-300 px-2 py-0.5 rounded border border-gray-800 tracking-wide">${att.filename} (${(att.size / 1024).toFixed(1)} KB)</div>
                     </div>
                 `;
@@ -1490,11 +1656,11 @@ function scrollChatBottom() {
 
 function getStatusClass(status) {
     switch (status.toLowerCase()) {
-        case "open": return "bg-yellow-550/15 border border-yellow-550/30 text-yellow-500";
-        case "in-progress": return "bg-blue-550/15 border border-blue-550/30 text-blue-400 animate-pulse";
-        case "done": return "bg-green-550/15 border border-green-550/30 text-green-500";
-        case "archived": return "bg-gray-800/10 border border-gray-700 text-gray-500";
-        default: return "bg-gray-800 text-gray-400";
+        case "open": return "bg-gray-800 border border-gray-700 text-yellow-500";
+        case "in-progress": return "bg-gray-800 border border-gray-700 text-blue-400 animate-pulse";
+        case "done": return "bg-gray-800 border border-gray-700 text-green-500";
+        case "archived": return "bg-gray-800 border border-gray-700 text-gray-500";
+        default: return "bg-gray-800 border border-gray-700 text-gray-400";
     }
 }
 
@@ -1523,6 +1689,14 @@ function parseMiniMarkdown(text) {
     return html;
 }
 
+function decodeHtmlEntities(text) {
+    if (!text) return "";
+
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = text;
+    return textarea.value;
+}
+
 function escapeHtml(text) {
     return String(text)
         .replace(/&/g, "&amp;")
@@ -1532,16 +1706,16 @@ function escapeHtml(text) {
         .replace(/'/g, "&#39;");
 }
 
-    function toPlainTextPreview(text, maxLength = 280) {
-        if (!text) return "No description available.";
-        const plain = String(text)
-            .replace(/<[^>]*>/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
+function toPlainTextPreview(text, maxLength = 280) {
+    if (!text) return "No description available.";
+    const plain = String(text)
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-        if (plain.length <= maxLength) return plain;
-        return `${plain.slice(0, maxLength).trimEnd()}…`;
-    }
+    if (plain.length <= maxLength) return plain;
+    return `${plain.slice(0, maxLength).trimEnd()}…`;
+}
 
 // Function to convert Obsidian-style [[#0012]] double bracket string links into clickable tags
 function parseDoubleBracketsInHTML(text) {
@@ -2151,10 +2325,18 @@ function populateNodeDetailsWidget(node) {
 
 // Window resizing adjustments
 window.addEventListener("resize", () => {
+    if (!isMobileViewport()) {
+        closeMobileSidebar();
+    }
+
+    syncResponsiveUI();
+
     if (currentViewEnv === "graph") {
         fetchAndRenderGraph();
     }
-});// Logic for dynamic hybrid UI
+});
+
+// Logic for dynamic hybrid UI
 function runContextChipCommand(cmd) {
     if (cmd === '✨ Summarize') {
         const btn = document.getElementById('summarizeBtn');
@@ -2189,16 +2371,17 @@ async function renderExploreTagsCloud() {
                 }
             });
             
+            const maxTags = isMobileViewport() ? 6 : 10;
             const sortedTags = Object.entries(tagCounts)
                 .sort((a,b) => b[1] - a[1])
-                .slice(0, 10); // top 10 tags
+                .slice(0, maxTags);
                 
             if (sortedTags.length > 0) {
                 list.innerHTML = "";
                 sortedTags.forEach(([tag, count]) => {
                     const btn = document.createElement("button");
                     btn.type = "button";
-                    btn.className = "px-3.5 py-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full text-xs font-semibold shadow-sm transition transform active:scale-95 flex items-center space-x-1.5";
+                    btn.className = "px-3 py-1.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-full text-xs font-semibold shadow-sm transition transform active:scale-95 flex items-center space-x-1.5 shrink-0";
                     btn.innerHTML = `<span>${tag}</span><span class="text-3xs text-gray-500 bg-gray-950 px-1.5 py-0.5 rounded-full">${count}</span>`;
                     btn.onclick = () => {
                         chatInput.value = '/search ' + tag;
@@ -2216,28 +2399,5 @@ async function renderExploreTagsCloud() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Add logic for plus button rotation
-    const quickBucketBtn = document.getElementById("quickBucketBtn");
-    const quickBucketDropdown = document.getElementById("quickBucketDropdown");
-    if (quickBucketBtn && quickBucketDropdown) {
-        quickBucketBtn.addEventListener("click", () => {
-            const icon = quickBucketBtn.querySelector("i");
-            if (icon) {
-                if (quickBucketDropdown.classList.contains("hidden")) {
-                    icon.classList.remove("rotate-45");
-                } else {
-                    icon.classList.add("rotate-45");
-                }
-            }
-        });
-        
-        // Ensure reset when selecting an item
-        const dropdownButtons = quickBucketDropdown.querySelectorAll("button");
-        dropdownButtons.forEach(btn => {
-            btn.addEventListener("click", () => {
-                const icon = quickBucketBtn.querySelector("i");
-                if (icon) icon.classList.remove("rotate-45");
-            });
-        });
-    }
+    setQuickBucketDropdownOpen(false);
 });
