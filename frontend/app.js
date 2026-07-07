@@ -1868,14 +1868,7 @@ function renderFilteredTimeline() {
                 
                 const cleanTitle = escapeHtml(decodeHtmlEntities(entry.title || "Untitled"));
                 const decodedDescription = decodeHtmlEntities(entry.description || "").trim();
-                const descPreview = escapeHtml(toPlainTextPreview(decodedDescription, 220));
-                const streamDescPreview = escapeHtml(toPlainTextPreview(decodedDescription, 150));
-                const fullDescription = escapeHtml(decodedDescription);
-                const descriptionMarkup = decodedDescription
-                    ? isExpanded
-                        ? `<p class="text-[13px] text-gray-200 whitespace-pre-line leading-6 break-words">${fullDescription}</p>`
-                        : `<p class="text-[12px] text-gray-300 break-words ${useCardsLayout ? 'line-clamp-4 leading-5' : 'line-clamp-2 leading-6'}">${descPreview}</p>`
-                    : "";
+                const descriptionMarkup = formatDescriptionHtml(decodedDescription, isExpanded, useCardsLayout);
                 
                 let cardTagsHtml = "";
                 let streamTagsHtml = "";
@@ -1975,11 +1968,7 @@ function renderFilteredTimeline() {
                             <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col">
                                 <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full h-full min-w-0 space-y-1 text-left focus:outline-none">
                                     <h3 class="min-w-0 text-base md:text-lg font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
-                                    ${isExpanded
-                                        ? `<p class="text-[13px] text-gray-200 whitespace-pre-line leading-6 break-words">${fullDescription}</p>`
-                                        : decodedDescription
-                                            ? `<p class="text-[12px] text-gray-300 leading-6 line-clamp-1 break-words">${streamDescPreview}</p>`
-                                            : `<span class="text-[11px] text-gray-400">No description</span>`}
+                                    ${descriptionMarkup || `<span class="text-[11px] text-gray-400">No description</span>`}
                                 </button>
                             </div>
                             <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex items-start content-start">
@@ -2547,6 +2536,48 @@ function toPlainTextPreview(text, maxLength = 280) {
 
     if (plain.length <= maxLength) return plain;
     return `${plain.slice(0, maxLength).trimEnd()}…`;
+}
+
+function formatDescriptionHtml(rawDesc, isExpanded, useCardsLayout = false) {
+    if (!rawDesc) return "";
+    
+    const originalNoteMarker = "**Original Note:**";
+    const markerIndex = rawDesc.indexOf(originalNoteMarker);
+    
+    if (markerIndex !== -1) {
+        const mainDesc = rawDesc.substring(0, markerIndex).trim();
+        const originalNoteContent = rawDesc.substring(markerIndex + originalNoteMarker.length).trim();
+        
+        if (isExpanded) {
+            const mainDescParsed = parseDoubleBracketsInHTML(parseMiniMarkdown(escapeHtml(mainDesc)));
+            const origNoteParsed = escapeHtml(originalNoteContent);
+            return `
+                <div class="space-y-3">
+                    <p class="text-[13px] text-gray-200 leading-6 break-words">${mainDescParsed}</p>
+                    <details class="cursor-pointer text-[12px] bg-gray-950/80 border border-gray-800/80 rounded-xl p-2.5 transition duration-150 group/details select-none">
+                        <summary class="font-bold text-gray-400 hover:text-white flex items-center gap-1.5 focus:outline-none select-none">
+                            <i class="fa-solid fa-clock-rotate-left text-blue-400/80 text-[10px]"></i>
+                            <span>Show Captured Raw Input</span>
+                        </summary>
+                        <div class="text-[11px] text-gray-400 mt-2 font-mono whitespace-pre-wrap select-text leading-relaxed bg-black/40 p-2.5 rounded-lg border border-gray-850/60 transition shadow-inner">
+                            ${origNoteParsed}
+                        </div>
+                    </details>
+                </div>
+            `;
+        } else {
+            const preview = toPlainTextPreview(mainDesc, useCardsLayout ? 160 : 120);
+            return `<p class="text-[12px] text-gray-300 break-words ${useCardsLayout ? 'line-clamp-4 leading-5' : 'line-clamp-2 leading-6'}">${escapeHtml(preview)}</p>`;
+        }
+    } else {
+        if (isExpanded) {
+            const parsed = parseDoubleBracketsInHTML(parseMiniMarkdown(escapeHtml(rawDesc)));
+            return `<p class="text-[13px] text-gray-200 whitespace-pre-line leading-6 break-words">${parsed}</p>`;
+        } else {
+            const preview = toPlainTextPreview(rawDesc, useCardsLayout ? 160 : 120);
+            return `<p class="text-[12px] text-gray-300 break-words ${useCardsLayout ? 'line-clamp-4 leading-5' : 'line-clamp-2 leading-6'}">${escapeHtml(preview)}</p>`;
+        }
+    }
 }
 
 // Function to convert Obsidian-style [[#0012]] double bracket string links into clickable tags
