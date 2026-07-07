@@ -303,6 +303,10 @@
             min-width: 0;
         }
 
+        .timeline-meta-line:has(.!col-span-2) {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
         .timeline-meta-key {
             color: #6f7b91;
             font-size: clamp(0.7rem, 0.65rem + 0.3vw, 0.8125rem);

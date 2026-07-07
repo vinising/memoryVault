@@ -1947,8 +1947,7 @@ function renderFilteredTimeline() {
                         <div class="timeline-stream-grid items-center">
                             <div class="timeline-stream-cell timeline-stream-meta px-3 py-2 min-w-0">
                                 <div class="timeline-meta-line">
-                                    <span class="timeline-meta-key">Meta</span>
-                                    <span class="timeline-meta-value">
+                                    <span class="timeline-meta-value !col-span-2">
                                         <span class="inline-flex px-1.5 py-0.5 rounded-md ${badgeColor} font-bold text-[11px] uppercase leading-none">${entry.bucket}</span>
                                         <span class="timeline-meta-id ml-1">${entry.id}</span>
                                         <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="ml-1 inline-flex items-center justify-center text-gray-500 hover:text-white transition group/copy" aria-label="Copy Ref">
