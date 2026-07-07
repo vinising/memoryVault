@@ -1966,10 +1966,12 @@ function renderFilteredTimeline() {
                                 </div>
                             </div>
                             <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col">
-                                <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full h-full min-w-0 space-y-1 text-left focus:outline-none">
-                                    <h3 class="min-w-0 text-base md:text-lg font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
+                                <div class="w-full h-full min-w-0 space-y-1 text-left">
+                                    <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full focus:outline-none text-left">
+                                        <h3 class="min-w-0 text-base md:text-lg font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
+                                    </button>
                                     ${descriptionMarkup || `<span class="text-[11px] text-gray-400">No description</span>`}
-                                </button>
+                                </div>
                             </div>
                             <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex items-start content-start">
                                 ${streamTagsHtml || `<span class="text-[11px] text-gray-400">No tags</span>`}
@@ -2004,10 +2006,12 @@ function renderFilteredTimeline() {
                                 </div>
                             </div>
                         </div>
-                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="space-y-1 text-left rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-0">
-                            <h3 class="text-sm font-semibold text-white leading-snug ${isExpanded ? '' : 'line-clamp-3'}">${cleanTitle}</h3>
+                        <div class="space-y-1 text-left rounded-2xl focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-0">
+                            <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full focus:outline-none text-left">
+                                <h3 class="text-sm font-semibold text-white leading-snug ${isExpanded ? '' : 'line-clamp-3'}">${cleanTitle}</h3>
+                            </button>
                             ${descriptionMarkup}
-                        </button>
+                        </div>
                         ${cardTagsHtml}
                         <div class="mt-auto flex items-center gap-2 pt-1.5">
                             <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-2.5 py-1 text-3xs font-bold text-gray-300 hover:text-white hover:border-blue-500/40 transition">
@@ -2554,15 +2558,13 @@ function formatDescriptionHtml(rawDesc, isExpanded, useCardsLayout = false) {
             return `
                 <div class="space-y-3">
                     <p class="text-[13px] text-gray-200 leading-6 break-words">${mainDescParsed}</p>
-                    <details class="cursor-pointer text-[12px] bg-gray-950/80 border border-gray-800/80 rounded-xl p-2.5 transition duration-150 group/details select-none">
-                        <summary class="font-bold text-gray-400 hover:text-white flex items-center gap-1.5 focus:outline-none select-none">
-                            <i class="fa-solid fa-clock-rotate-left text-blue-400/80 text-[10px]"></i>
-                            <span>Show Captured Raw Input</span>
-                        </summary>
-                        <div class="text-[11px] text-gray-400 mt-2 font-mono whitespace-pre-wrap select-text leading-relaxed bg-black/40 p-2.5 rounded-lg border border-gray-850/60 transition shadow-inner">
-                            ${origNoteParsed}
+                    <div class="text-[12px] border-t border-gray-800/80 pt-3 mt-3 select-none">
+                        <div class="text-3xs font-extrabold tracking-[0.14em] text-gray-500 uppercase mb-2 flex items-center gap-1.5 cursor-default">
+                            <i class="fa-solid fa-clock-rotate-left text-[11px] text-blue-400"></i>
+                            <span>Captured Raw Input</span>
                         </div>
-                    </details>
+                        <div class="text-[11px] text-gray-400 font-mono whitespace-pre-wrap select-text leading-relaxed bg-gray-950/40 p-3 rounded-xl border border-gray-850/60 transition shadow-inner">${origNoteParsed}</div>
+                    </div>
                 </div>
             `;
         } else {
