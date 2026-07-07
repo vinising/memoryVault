@@ -1807,54 +1807,50 @@ function renderFilteredTimeline() {
     
     let html = "";
     
-            for (const [groupName, groupEntries] of Object.entries(groups)) {
-            if (groupEntries.length === 0) continue;
-            
-            const isGroupCollapsed = collapsedTimelineGroups.has(groupName);
-            const chevronIcon = isGroupCollapsed ? "fa-chevron-down" : "fa-chevron-up";
-            
-            // Subtle Date Divider
-            html += `
-                <div class="mb-4 mt-8 first:mt-0 flex items-center justify-between px-2">
-                    <button type="button" onclick="toggleTimelineGroupCollapsed('${escapeHtml(groupName)}')" class="flex items-center gap-2 text-left focus:outline-none group/divider">
-                        <span class="text-sm font-bold text-white tracking-wide shrink-0">${groupName}</span>
-                        <i class="fa-solid ${chevronIcon} text-[11px] text-gray-500 group-hover/divider:text-white transition duration-150"></i>
-                    </button>
-                    ${isGroupCollapsed ? `
-                        <span class="text-[11px] text-gray-500 font-medium shrink-0 bg-gray-900/60 border border-gray-800/40 rounded-full px-2.5 py-1 leading-none">
-                            ${groupEntries.length} ${groupEntries.length === 1 ? 'item' : 'items'} hidden
-                        </span>
-                    ` : ''}
-                </div>
-            `;
-            
-            if (isGroupCollapsed) continue;
-            
-            if (useTableLayout && !tableHeaderRendered) {
-                html += `
-                    <div class="timeline-table-grid rounded-t-lg mb-1">
-                        <div class="timeline-table-header">Status</div>
-                        <div class="timeline-table-header">Time</div>
-                        <div class="timeline-table-header">Task Details</div>
-                        <div class="timeline-table-header">Tags</div>
-                        <div class="timeline-table-header"></div>
-                    </div>
-                `;
-                tableHeaderRendered = true;
-            }
-
-            if (useStreamLayout && !streamHeaderRendered) {
-                html += `
-                    <div class="timeline-stream-header timeline-stream-grid hidden md:grid mb-0 rounded-[18px] text-[11px] font-semibold uppercase tracking-[0.08em]">
-                        <div class="timeline-stream-cell px-4 py-3 relative">Meta<div class="column-resizer" data-col="--stream-meta-col"></div></div>
-                        <div class="timeline-stream-cell px-4 py-3 relative">Task Details<div class="column-resizer" data-col="--stream-details-col"></div></div>
-                        <div class="timeline-stream-cell px-4 py-3">Tags</div>
-                    </div>
-                `;
-                streamHeaderRendered = true;
-            }
-
-            html += `<div class="${useCardsLayout ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start' : 'flex flex-col gap-0'}">`;
+    if (useTableLayout) {
+        html += `
+            <div class="timeline-table-header-row timeline-table-grid mb-4">
+                <div class="timeline-table-header">Status</div>
+                <div class="timeline-table-header">Time</div>
+                <div class="timeline-table-header">Task Details</div>
+                <div class="timeline-table-header">Tags</div>
+                <div class="timeline-table-header"></div>
+            </div>
+        `;
+    } else if (useStreamLayout) {
+        html += `
+            <div class="timeline-stream-header timeline-stream-grid hidden md:grid mb-4">
+                <div class="timeline-stream-cell px-4 py-3 relative font-bold">Meta<div class="column-resizer" data-col="--stream-meta-col"></div></div>
+                <div class="timeline-stream-cell px-4 py-3 relative font-bold">Task Details<div class="column-resizer" data-col="--stream-details-col"></div></div>
+                <div class="timeline-stream-cell px-4 py-3 font-bold">Tags</div>
+            </div>
+        `;
+    }
+    
+    for (const [groupName, groupEntries] of Object.entries(groups)) {
+        if (groupEntries.length === 0) continue;
+        
+        const isGroupCollapsed = collapsedTimelineGroups.has(groupName);
+        const chevronIcon = isGroupCollapsed ? "fa-chevron-down" : "fa-chevron-up";
+        
+        // Subtle Date Divider
+        html += `
+            <div class="mb-4 mt-8 first:mt-0 flex items-center justify-between px-2">
+                <button type="button" onclick="toggleTimelineGroupCollapsed('${escapeHtml(groupName)}')" class="flex items-center gap-2 text-left focus:outline-none group/divider">
+                    <span class="text-sm font-bold text-white tracking-wide shrink-0">${groupName}</span>
+                    <i class="fa-solid ${chevronIcon} text-[11px] text-gray-500 group-hover/divider:text-white transition duration-150"></i>
+                </button>
+                ${isGroupCollapsed ? `
+                    <span class="text-[11px] text-gray-500 font-medium shrink-0 bg-gray-900/60 border border-gray-800/40 rounded-full px-2.5 py-1 leading-none">
+                        ${groupEntries.length} ${groupEntries.length === 1 ? 'item' : 'items'} hidden
+                    </span>
+                ` : ''}
+            </div>
+        `;
+        
+        if (isGroupCollapsed) continue;
+        
+        html += `<div class="${useCardsLayout ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start' : 'flex flex-col gap-0'}">`;
             
             groupEntries.forEach(entry => {
                 const dt = new Date(entry.timestamp);
