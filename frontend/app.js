@@ -76,6 +76,7 @@ if (!timelineLayoutMode || !ENABLED_TIMELINE_VIEWS.includes(timelineLayoutMode))
         : (ENABLED_TIMELINE_VIEWS[0] || "cards");
 }
 const expandedTimelineCards = new Set();
+const collapsedTimelineGroups = new Set();
 let lastCopiedTimelineCardId = null;
 let lastCopiedTimelineCardResetHandle = null;
 const slashCommandDefinitions = [
@@ -1682,6 +1683,17 @@ function toggleTimelineCardExpanded(entryId) {
 
 window.toggleTimelineCardExpanded = toggleTimelineCardExpanded;
 
+function toggleTimelineGroupCollapsed(groupName) {
+    if (collapsedTimelineGroups.has(groupName)) {
+        collapsedTimelineGroups.delete(groupName);
+    } else {
+        collapsedTimelineGroups.add(groupName);
+    }
+    renderFilteredTimeline();
+}
+
+window.toggleTimelineGroupCollapsed = toggleTimelineGroupCollapsed;
+
 async function copyTimelineCardReference(entryId) {
     const entry = allTimelineEntries.find((candidate) => candidate.id === entryId);
     if (!entry) return;
@@ -1798,12 +1810,25 @@ function renderFilteredTimeline() {
             for (const [groupName, groupEntries] of Object.entries(groups)) {
             if (groupEntries.length === 0) continue;
             
+            const isGroupCollapsed = collapsedTimelineGroups.has(groupName);
+            const chevronIcon = isGroupCollapsed ? "fa-chevron-down" : "fa-chevron-up";
+            
             // Subtle Date Divider
             html += `
-                <div class="mb-4 mt-8 first:mt-0 flex items-center px-2">
-                    <span class="text-sm font-bold text-white tracking-wide shrink-0">${groupName}</span>
+                <div class="mb-4 mt-8 first:mt-0 flex items-center justify-between px-2">
+                    <button type="button" onclick="toggleTimelineGroupCollapsed('${escapeHtml(groupName)}')" class="flex items-center gap-2 text-left focus:outline-none group/divider">
+                        <span class="text-sm font-bold text-white tracking-wide shrink-0">${groupName}</span>
+                        <i class="fa-solid ${chevronIcon} text-[11px] text-gray-500 group-hover/divider:text-white transition duration-150"></i>
+                    </button>
+                    ${isGroupCollapsed ? `
+                        <span class="text-[11px] text-gray-500 font-medium shrink-0 bg-gray-900/60 border border-gray-800/40 rounded-full px-2.5 py-1 leading-none">
+                            ${groupEntries.length} ${groupEntries.length === 1 ? 'item' : 'items'} hidden
+                        </span>
+                    ` : ''}
                 </div>
             `;
+            
+            if (isGroupCollapsed) continue;
             
             if (useTableLayout && !tableHeaderRendered) {
                 html += `
