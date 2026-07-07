@@ -18,8 +18,8 @@ const graphPane = document.getElementById("graphPane");
 const tabChatBtn = document.getElementById("tabChatBtn");
 const tabTimelineBtn = document.getElementById("tabTimelineBtn");
 const tabGraphBtn = document.getElementById("tabGraphBtn");
-const timelineCardsViewBtn = document.getElementById("timelineCardsViewBtn");
-const timelineStreamViewBtn = document.getElementById("timelineStreamViewBtn");
+
+const ENABLED_TIMELINE_VIEWS = ["cards", "stream", "table"];
 
 const timelineContainer = document.getElementById("timelineContainer");
 const timelineTotalCount = document.getElementById("timelineTotalCount");
@@ -69,7 +69,12 @@ const tracesContainer = document.getElementById("tracesContainer");
 
 const baseTabBtnClass = "flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold text-gray-400 hover:text-white rounded-xl transition shrink-0";
 const activeTabBtnClass = "flex items-center justify-center space-x-2 px-3 py-2 text-sm md:text-xs font-bold bg-blue-600 text-white rounded-xl transition shadow shrink-0";
-let timelineLayoutMode = localStorage.getItem("timelineLayoutMode") || (window.innerWidth < 768 ? "cards" : "stream");
+let timelineLayoutMode = localStorage.getItem("timelineLayoutMode");
+if (!timelineLayoutMode || !ENABLED_TIMELINE_VIEWS.includes(timelineLayoutMode)) {
+    timelineLayoutMode = ENABLED_TIMELINE_VIEWS.includes(isMobileViewport() ? "cards" : "table")
+        ? (isMobileViewport() ? "cards" : "table")
+        : (ENABLED_TIMELINE_VIEWS[0] || "cards");
+}
 const expandedTimelineCards = new Set();
 let lastCopiedTimelineCardId = null;
 let lastCopiedTimelineCardResetHandle = null;
@@ -99,27 +104,41 @@ function syncTimelineContentShellLayout() {
 
     timelineContentShell.classList.toggle("is-stream", getTimelineLayoutMode() === "stream");
     timelineContentShell.classList.toggle("is-cards", getTimelineLayoutMode() === "cards");
+    timelineContentShell.classList.toggle("is-table", getTimelineLayoutMode() === "table");
+}
+
+function renderTimelineLayoutToggle() {
+    const toggleContainer = document.getElementById("timelineLayoutToggle");
+    if (!toggleContainer) return;
+    
+    toggleContainer.innerHTML = '';
+    
+    ENABLED_TIMELINE_VIEWS.forEach(view => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = view.charAt(0).toUpperCase() + view.slice(1);
+        btn.id = `timeline${view.charAt(0).toUpperCase() + view.slice(1)}ViewBtn`;
+        btn.onclick = () => setTimelineLayoutMode(view);
+        toggleContainer.appendChild(btn);
+    });
 }
 
 function syncTimelineLayoutToggle() {
     const activeMode = getTimelineLayoutMode();
     syncTimelineContentShellLayout();
 
-    if (timelineCardsViewBtn) {
-        timelineCardsViewBtn.className = activeMode === "cards"
-            ? "px-3 py-1.5 rounded-full text-2xs font-bold bg-blue-600 text-white shadow-sm transition"
-            : "px-3 py-1.5 rounded-full text-2xs font-bold text-gray-400 hover:text-white transition";
-    }
-
-    if (timelineStreamViewBtn) {
-        timelineStreamViewBtn.className = activeMode === "stream"
-            ? "px-3 py-1.5 rounded-full text-2xs font-bold bg-blue-600 text-white shadow-sm transition"
-            : "px-3 py-1.5 rounded-full text-2xs font-bold text-gray-400 hover:text-white transition";
-    }
+    ENABLED_TIMELINE_VIEWS.forEach(view => {
+        const btn = document.getElementById(`timeline${view.charAt(0).toUpperCase() + view.slice(1)}ViewBtn`);
+        if (btn) {
+            btn.className = activeMode === view
+                ? "px-3 py-1.5 rounded-full text-2xs font-bold bg-blue-600 text-white shadow-sm transition"
+                : "px-3 py-1.5 rounded-full text-2xs font-bold text-gray-400 hover:text-white transition";
+        }
+    });
 }
 
 function setTimelineLayoutMode(mode) {
-    if (mode !== "cards" && mode !== "stream") return;
+    if (!ENABLED_TIMELINE_VIEWS.includes(mode)) return;
     timelineLayoutMode = mode;
     localStorage.setItem("timelineLayoutMode", mode);
     syncTimelineLayoutToggle();
@@ -371,13 +390,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    if (timelineCardsViewBtn) {
-        timelineCardsViewBtn.addEventListener("click", () => setTimelineLayoutMode("cards"));
-    }
-
-    if (timelineStreamViewBtn) {
-        timelineStreamViewBtn.addEventListener("click", () => setTimelineLayoutMode("stream"));
-    }
+    renderTimelineLayoutToggle();
     
     // Auto-focus chat input field on '/' keypress
     document.addEventListener("keydown", (e) => {
@@ -1690,8 +1703,12 @@ window.copyTimelineCardReference = copyTimelineCardReference;
 
 function renderFilteredTimeline() {
     if (!timelineContainer) return;
-    const useCardsLayout = getTimelineLayoutMode() === "cards";
+    const layoutMode = getTimelineLayoutMode();
+    const useCardsLayout = layoutMode === "cards";
+    const useStreamLayout = layoutMode === "stream";
+    const useTableLayout = layoutMode === "table";
     let streamHeaderRendered = false;
+    let tableHeaderRendered = false;
     
     let filtered = allTimelineEntries;
     if (activeTimelineStatusFilter !== "all") {
@@ -1772,7 +1789,20 @@ function renderFilteredTimeline() {
                 </div>
             `;
             
-            if (!useCardsLayout && !streamHeaderRendered) {
+            if (useTableLayout && !tableHeaderRendered) {
+                html += `
+                    <div class="timeline-table-grid rounded-t-lg mb-1">
+                        <div class="timeline-table-header">Status</div>
+                        <div class="timeline-table-header">Time</div>
+                        <div class="timeline-table-header">Task Details</div>
+                        <div class="timeline-table-header">Tags</div>
+                        <div class="timeline-table-header"></div>
+                    </div>
+                `;
+                tableHeaderRendered = true;
+            }
+
+            if (useStreamLayout && !streamHeaderRendered) {
                 html += `
                     <div class="timeline-stream-header timeline-stream-grid hidden md:grid mb-3 rounded-[18px] text-[11px] font-semibold uppercase tracking-[0.08em]">
                         <div class="timeline-stream-cell px-4 py-3 relative">Meta<div class="column-resizer" data-col="--stream-meta-col"></div></div>
@@ -1829,12 +1859,50 @@ function renderFilteredTimeline() {
                 
                 const currentStatus = (entry.status || "open").toLowerCase();
                 const badgeClass = getStatusClass(currentStatus);
+                const statusDotClass = currentStatus === "done" ? "bg-green-500" : currentStatus === "in-progress" ? "bg-blue-400" : currentStatus === "archived" ? "bg-gray-500" : "bg-yellow-400";
                 const expandLabel = isExpanded ? "Collapse" : "Details";
                 const copyLabel = lastCopiedTimelineCardId === entry.id ? "Copied" : "Copy ref";
                 const cardStateClass = isExpanded ? "ring-1 ring-blue-500/30 shadow-lg shadow-blue-950/20" : "";
 
-                html += useCardsLayout
-                    ? `
+                if (useTableLayout) {
+                    html += `
+                    <article class="timeline-table-row timeline-table-grid border-l border-r border-t border-gray-800/40 group">
+                        <div class="timeline-table-cell justify-center relative group/status" title="Change Status: ${currentStatus.toUpperCase()}">
+                            <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                <option value="open" class="text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
+                                <option value="in-progress" class="text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
+                                <option value="done" class="text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
+                                <option value="archived" class="text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
+                            </select>
+                            <span class="h-2 w-2 rounded-full shrink-0 ${statusDotClass} group-hover/status:ring-4 group-hover/status:ring-gray-700 transition-all duration-200"></span>
+                        </div>
+                        <div class="timeline-table-cell">
+                            <span class="text-xs text-gray-500 font-mono tracking-tight cursor-default" title="${dateStr}">${timeStr}</span>
+                        </div>
+                        <div class="timeline-table-cell flex-col items-start justify-center">
+                            <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full text-left focus:outline-none flex gap-2 items-center min-w-0">
+                                <h3 class="flex-shrink-0 min-w-0 text-[13px] font-semibold text-white leading-tight truncate" title="${cleanTitle}">${cleanTitle}</h3>
+                                ${decodedDescription ? `<p class="text-[11px] text-gray-500 truncate w-full max-w-full">- ${streamDescPreview}</p>` : ''}
+                            </button>
+                        </div>
+                        <div class="timeline-table-cell">
+                            ${streamTagsHtml || ``}
+                        </div>
+                        <div class="timeline-table-cell">
+                            <div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-800 text-gray-500 hover:text-white transition" title="Copy Reference">
+                                    <i class="fa-solid ${lastCopiedTimelineCardId === entry.id ? 'fa-check text-emerald-400' : 'fa-copy'} text-[10px]"></i>
+                                </button>
+                                <button type="button" onclick="null" class="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition" title="Delete (Stub)">
+                                    <i class="fa-solid fa-trash text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                `;
+                } else if (useCardsLayout) {
+                    html += `
+                    
                     <article class="bubble-system px-3 py-3 transition duration-200 hover:shadow-lg flex flex-col gap-2.5 group border ${isExpanded ? '' : 'min-h-[11rem]'} ${borderColor} ${cardStateClass}">
                         <div class="flex items-start justify-between gap-2">
                             <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
@@ -1870,8 +1938,9 @@ function renderFilteredTimeline() {
                             </button>
                         </div>
                     </article>
-                `
-                    : `
+                `;
+                } else if (useStreamLayout) {
+                    html += `
                     <article class="bubble-system timeline-stream-card overflow-hidden transition duration-200 hover:shadow-lg group border ${cardStateClass}">
                         <div class="timeline-stream-grid items-stretch">
                             <div class="timeline-stream-cell timeline-stream-meta px-3 py-3 min-w-0">
@@ -1922,6 +1991,7 @@ function renderFilteredTimeline() {
                         </button>
                     </article>
                 `;
+                }
             });
             html += `</div>`;
         }
