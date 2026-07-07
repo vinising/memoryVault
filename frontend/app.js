@@ -1806,8 +1806,8 @@ function renderFilteredTimeline() {
                 const fullDescription = escapeHtml(decodedDescription);
                 const descriptionMarkup = decodedDescription
                     ? isExpanded
-                        ? `<p class="text-sm text-gray-300 whitespace-pre-line leading-6">${fullDescription}</p>`
-                        : `<p class="text-xs sm:text-sm text-gray-400 ${useCardsLayout ? 'line-clamp-4 leading-5' : 'line-clamp-2 leading-6'}">${descPreview}</p>`
+                        ? `<p class="text-sm text-gray-300 whitespace-pre-line leading-6 break-words">${fullDescription}</p>`
+                        : `<p class="text-xs sm:text-sm text-gray-400 break-words ${useCardsLayout ? 'line-clamp-4 leading-5' : 'line-clamp-2 leading-6'}">${descPreview}</p>`
                     : "";
                 
                 let cardTagsHtml = "";
@@ -1907,9 +1907,9 @@ function renderFilteredTimeline() {
                                 <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full h-full min-w-0 space-y-1.5 text-left focus:outline-none">
                                     <h3 class="min-w-0 text-lg md:text-xl font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
                                     ${isExpanded
-                                        ? `<p class="text-sm text-gray-300 whitespace-pre-line leading-6">${fullDescription}</p>`
+                                        ? `<p class="text-sm text-gray-300 whitespace-pre-line leading-6 break-words">${fullDescription}</p>`
                                         : decodedDescription
-                                            ? `<p class="text-sm text-gray-400 leading-6 line-clamp-2">${streamDescPreview}</p>`
+                                            ? `<p class="text-sm text-gray-400 leading-6 line-clamp-2 break-words">${streamDescPreview}</p>`
                                             : `<span class="text-sm text-gray-500">No description</span>`}
                                 </button>
                             </div>
