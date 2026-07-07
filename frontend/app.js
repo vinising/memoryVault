@@ -77,6 +77,7 @@ if (!timelineLayoutMode || !ENABLED_TIMELINE_VIEWS.includes(timelineLayoutMode))
 }
 const expandedTimelineCards = new Set();
 const collapsedTimelineGroups = new Set();
+let editingTimelineCardId = null;
 let lastCopiedTimelineCardId = null;
 let lastCopiedTimelineCardResetHandle = null;
 const slashCommandDefinitions = [
@@ -1694,6 +1695,66 @@ function toggleTimelineGroupCollapsed(groupName) {
 
 window.toggleTimelineGroupCollapsed = toggleTimelineGroupCollapsed;
 
+function startEditingTimelineCard(entryId) {
+    expandedTimelineCards.add(entryId);
+    editingTimelineCardId = entryId;
+    renderFilteredTimeline();
+}
+
+function cancelEditingTimelineCard() {
+    editingTimelineCardId = null;
+    renderFilteredTimeline();
+}
+
+async function saveEditingTimelineCard(entryId) {
+    const formattedId = entryId.startsWith("#") ? entryId : `#${parseInt(entryId).toString().padStart(4, "0")}`;
+    const editTitleEl = document.getElementById(`edit-title-${entryId}`);
+    const editDescEl = document.getElementById(`edit-desc-${entryId}`);
+    const editTagsEl = document.getElementById(`edit-tags-${entryId}`);
+    
+    if (!editTitleEl) return;
+    
+    const title = editTitleEl.value.trim();
+    const desc = editDescEl ? editDescEl.value.trim() : "";
+    const tags = editTagsEl ? editTagsEl.value.trim() : "";
+    
+    const originalEntry = allTimelineEntries.find(e => e.id === entryId);
+    let finalDescription = desc;
+    if (originalEntry && originalEntry.description) {
+        const originalNoteMarker = "**Original Note:**";
+        const markerIndex = originalEntry.description.indexOf(originalNoteMarker);
+        if (markerIndex !== -1) {
+            const originalNotePart = originalEntry.description.substring(markerIndex);
+            finalDescription = `${desc}\n\n${originalNotePart}`;
+        }
+    }
+    
+    try {
+        const res = await fetch(`${API_BASE}/item/${encodeURIComponent(formattedId)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                title: title,
+                description: finalDescription,
+                tags: tags
+            })
+        });
+        if (res.ok) {
+            cancelEditingTimelineCard();
+            refreshMetrics();
+            renderTimelineView({ preserveScroll: true, showLoading: false });
+        } else {
+            console.error(`Could not edit entry ${formattedId}`);
+        }
+    } catch (e) {
+        console.error("Timeline action patch error", e);
+    }
+}
+
+window.startEditingTimelineCard = startEditingTimelineCard;
+window.cancelEditingTimelineCard = cancelEditingTimelineCard;
+window.saveEditingTimelineCard = saveEditingTimelineCard;
+
 async function copyTimelineCardReference(entryId) {
     const entry = allTimelineEntries.find((candidate) => candidate.id === entryId);
     if (!entry) return;
@@ -1931,96 +1992,189 @@ function renderFilteredTimeline() {
                     </article>
                 `;
                                 } else if (useStreamLayout) {
-                    html += `
-                    <article class="bubble-system timeline-stream-card relative overflow-hidden transition duration-200 hover:shadow-lg group border ${cardStateClass}">
-                        <div class="timeline-stream-grid items-center">
-                            <div class="timeline-stream-cell timeline-stream-meta px-3 py-2 min-w-0">
-                                <div class="timeline-meta-line">
-                                    <span class="timeline-meta-value !col-span-2">
-                                        <span class="inline-flex px-1.5 py-0.5 rounded-md ${badgeColor} font-bold text-[11px] uppercase leading-none">${entry.bucket}</span>
-                                        <span class="timeline-meta-id ml-1">${entry.id}</span>
-                                        <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="ml-1 inline-flex items-center justify-center text-gray-500 hover:text-white transition group/copy" aria-label="Copy Ref">
-                                            <i class="fa-solid ${lastCopiedTimelineCardId === entry.id ? 'fa-check text-emerald-400' : 'fa-copy'} text-[11px]"></i>
-                                        </button>
-                                    </span>
-                                </div>
-                                <div class="timeline-meta-line">
-                                    <span class="timeline-meta-key">Date</span>
-                                    <span class="timeline-meta-value">${dateStr}, ${timeStr}</span>
-                                </div>
-                                <div class="timeline-meta-line">
-                                    <span class="timeline-meta-key">Status</span>
-                                    <span class="timeline-meta-value">
-                                        <span class="relative inline-block min-w-0 pointer-events-auto">
-                                            <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge timeline-meta-select cursor-pointer transition bg-transparent relative z-20">
-                                            <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
-                                            <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
-                                            <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
-                                            <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
-                                            </select>
-                                            <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5">
-                                                <i class="fa-solid fa-chevron-down text-3xs opacity-60"></i>
+                    if (editingTimelineCardId === entry.id) {
+                        html += `
+                        <article class="bubble-system timeline-stream-card relative overflow-hidden transition duration-200 border-2 border-blue-500/80 shadow-2xl bg-gray-900/98 card-editing ${cardStateClass}">
+                            <div class="timeline-stream-grid items-center">
+                                <div class="timeline-stream-cell timeline-stream-meta px-3 py-2 min-w-0 self-start mt-2">
+                                    <div class="timeline-meta-line">
+                                        <span class="timeline-meta-value !col-span-2">
+                                            <span class="inline-flex px-1.5 py-0.5 rounded-md ${badgeColor} font-bold text-[11px] uppercase leading-none">${entry.bucket}</span>
+                                            <span class="timeline-meta-id ml-1">${entry.id}</span>
+                                        </span>
+                                    </div>
+                                    <div class="timeline-meta-line">
+                                        <span class="timeline-meta-key">Date</span>
+                                        <span class="timeline-meta-value">${dateStr}, ${timeStr}</span>
+                                    </div>
+                                    <div class="timeline-meta-line">
+                                        <span class="timeline-meta-key">Status</span>
+                                        <span class="timeline-meta-value">
+                                            <span class="relative inline-block min-w-0 pointer-events-auto">
+                                                <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge timeline-meta-select cursor-pointer transition bg-transparent relative z-20">
+                                                <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
+                                                <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
+                                                <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
+                                                <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
+                                                </select>
+                                                <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5">
+                                                    <i class="fa-solid fa-chevron-down text-3xs opacity-60"></i>
+                                                </span>
                                             </span>
                                         </span>
-                                    </span>
+                                    </div>
+                                </div>
+                                <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col">
+                                    <div class="w-full space-y-3 text-left">
+                                        <div>
+                                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Title</label>
+                                            <input type="text" id="edit-title-${entry.id}" value="${escapeHtml(entry.title || '')}" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-sm font-semibold text-white focus:outline-none focus:border-blue-500 transition" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Description (Markdown)</label>
+                                            <textarea id="edit-desc-${entry.id}" rows="4" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono transition leading-relaxed">${escapeHtml(entry.description || '').replace(/\*\*Original Note:\*\*[\s\S]*/, '').trim()}</textarea>
+                                        </div>
+                                        <div class="flex gap-2 justify-start pt-1">
+                                            <button type="button" onclick="cancelEditingTimelineCard()" class="px-3 py-1 text-3xs font-bold bg-gray-800 hover:bg-gray-750 text-gray-400 hover:text-white rounded-lg transition border border-transparent hover:border-gray-700/50">Cancel</button>
+                                            <button type="button" onclick="saveEditingTimelineCard('${entry.id}')" class="px-3 py-1 text-3xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow-md">Save Changes</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col justify-start self-start">
+                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Tags</label>
+                                    <input type="text" id="edit-tags-${entry.id}" value="${escapeHtml(entry.tags || '')}" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition" placeholder="course, learning" />
                                 </div>
                             </div>
-                            <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col">
-                                <div class="w-full h-full min-w-0 space-y-1 text-left">
-                                    <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full focus:outline-none text-left">
-                                        <h3 class="min-w-0 text-base md:text-lg font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
+                        </article>
+                        `;
+                    } else {
+                        html += `
+                        <article class="bubble-system timeline-stream-card relative overflow-hidden transition duration-200 hover:shadow-lg group/stream-card border ${cardStateClass}">
+                            <div class="timeline-stream-grid items-center">
+                                <div class="timeline-stream-cell timeline-stream-meta px-3 py-2 min-w-0">
+                                    <div class="timeline-meta-line">
+                                        <span class="timeline-meta-value !col-span-2">
+                                            <span class="inline-flex px-1.5 py-0.5 rounded-md ${badgeColor} font-bold text-[11px] uppercase leading-none">${entry.bucket}</span>
+                                            <span class="timeline-meta-id ml-1">${entry.id}</span>
+                                            <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="ml-1 inline-flex items-center justify-center text-gray-500 hover:text-white transition group/copy" aria-label="Copy Ref">
+                                                <i class="fa-solid ${lastCopiedTimelineCardId === entry.id ? 'fa-check text-emerald-400' : 'fa-copy'} text-[11px]"></i>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <div class="timeline-meta-line">
+                                        <span class="timeline-meta-key">Date</span>
+                                        <span class="timeline-meta-value">${dateStr}, ${timeStr}</span>
+                                    </div>
+                                    <div class="timeline-meta-line">
+                                        <span class="timeline-meta-key">Status</span>
+                                        <span class="timeline-meta-value">
+                                            <span class="relative inline-block min-w-0 pointer-events-auto">
+                                                <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge timeline-meta-select cursor-pointer transition bg-transparent relative z-20">
+                                                <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
+                                                <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
+                                                <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
+                                                <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
+                                                </select>
+                                                <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5">
+                                                    <i class="fa-solid fa-chevron-down text-3xs opacity-60"></i>
+                                                </span>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col relative group/details-cell">
+                                    <div class="w-full h-full min-w-0 space-y-1 text-left ${decodedDescription && isExpanded ? 'mb-8' : ''}">
+                                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full focus:outline-none text-left">
+                                            <h3 class="min-w-0 text-base md:text-lg font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
+                                        </button>
+                                        ${descriptionMarkup || `<span class="text-[11px] text-gray-400">No description</span>`}
+                                    </div>
+                                    <button type="button" onclick="startEditingTimelineCard('${entry.id}')" class="absolute bottom-1.5 right-1.5 opacity-0 group-hover/details-cell:opacity-100 focus:opacity-100 bg-gray-900/90 hover:bg-gray-800/90 border border-gray-800 hover:border-gray-700/50 rounded-lg px-2 py-0.5 text-3xs font-mono font-bold text-gray-400 hover:text-white transition flex items-center gap-1 shadow-sm">
+                                        <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                                        <span>${isExpanded ? 'Edit' : 'Edit & Expand'}</span>
                                     </button>
-                                    ${descriptionMarkup || `<span class="text-[11px] text-gray-400">No description</span>`}
+                                </div>
+                                <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex items-start content-start">
+                                    ${streamTagsHtml || `<span class="text-[11px] text-gray-400">No tags</span>`}
                                 </div>
                             </div>
-                            <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex items-start content-start">
-                                ${streamTagsHtml || `<span class="text-[11px] text-gray-400">No tags</span>`}
-                            </div>
-                        </div>
-                        ${decodedDescription ? `
-                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="absolute bottom-1.5 right-1.5 text-gray-500 hover:text-white transition focus:outline-none text-[11px] z-20" aria-label="Toggle details">
-                            <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
-                        </button>
-                        ` : ''}
-                    </article>
-                `;
+                            ${decodedDescription ? `
+                            <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="absolute bottom-1.5 right-1.5 text-gray-500 hover:text-white transition focus:outline-none text-[11px] z-20 pointer-events-auto" aria-label="Toggle details">
+                                <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                            </button>
+                            ` : ''}
+                        </article>
+                        `;
+                    }
                 } else if (useCardsLayout) {
-                    html += `
-                    
-                    <article class="bubble-system px-3 py-3 transition duration-200 hover:shadow-lg flex flex-col gap-2.5 group border ${isExpanded ? '' : 'min-h-[11rem]'} ${borderColor} ${cardStateClass}">
-                        <div class="flex items-start justify-between gap-2">
-                            <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
-                            <span class="text-[11px] rounded-lg px-1.5 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
-                        </div>
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="text-[11px] text-gray-500 font-medium">${timeStr}</span>
-                            <div class="relative inline-block shrink-0">
-                                <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge text-3xs px-2 py-0.5 pr-5 rounded-full font-bold cursor-pointer transition ${badgeClass} bg-gray-900/90 max-w-[6.7rem]">
-                                    <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
-                                    <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
-                                    <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
-                                    <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
-                                </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5">
-                                    <i class="fa-solid fa-chevron-down text-3xs opacity-60"></i>
+                    if (editingTimelineCardId === entry.id) {
+                        html += `
+                        <article class="bubble-system px-3 py-3 border-2 border-blue-500/80 shadow-2xl transition duration-200 flex flex-col gap-2.5 group border ${borderColor} ${cardStateClass}">
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
+                                <span class="text-[11px] rounded-lg px-1.5 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Title</label>
+                                    <input type="text" id="edit-title-${entry.id}" value="${escapeHtml(entry.title || '')}" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-sm font-semibold text-white focus:outline-none focus:border-blue-500 transition" />
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Description (Markdown)</label>
+                                    <textarea id="edit-desc-${entry.id}" rows="5" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono transition leading-relaxed">${escapeHtml(entry.description || '').replace(/\*\*Original Note:\*\*[\s\S]*/, '').trim()}</textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Tags</label>
+                                    <input type="text" id="edit-tags-${entry.id}" value="${escapeHtml(entry.tags || '')}" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition" placeholder="course, learning" />
+                                </div>
+                                <div class="flex gap-2 justify-end pt-1">
+                                    <button type="button" onclick="cancelEditingTimelineCard()" class="px-3 py-1.5 text-3xs font-bold bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg transition border border-transparent">Cancel</button>
+                                    <button type="button" onclick="saveEditingTimelineCard('${entry.id}')" class="px-3 py-1.5 text-3xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow-md">Save</button>
                                 </div>
                             </div>
-                        </div>
-                        <div class="space-y-1 text-left rounded-2xl focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-0">
-                            <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full focus:outline-none text-left">
-                                <h3 class="text-sm font-semibold text-white leading-snug ${isExpanded ? '' : 'line-clamp-3'}">${cleanTitle}</h3>
-                            </button>
-                            ${descriptionMarkup}
-                        </div>
-                        ${cardTagsHtml}
-                        <div class="mt-auto flex items-center gap-2 pt-1.5">
-                            <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-2.5 py-1 text-3xs font-bold text-gray-300 hover:text-white hover:border-blue-500/40 transition">
-                                <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[11px]"></i>
-                                <span>${expandLabel}</span>
-                            </button>
-                        </div>
-                    </article>
-                `;
+                        </article>
+                        `;
+                    } else {
+                        html += `
+                        <article class="bubble-system px-3 py-3 transition duration-200 hover:shadow-lg flex flex-col gap-2.5 group border ${isExpanded ? '' : 'min-h-[11rem]'} ${borderColor} ${cardStateClass}">
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
+                                <span class="text-[11px] rounded-lg px-1.5 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[11px] text-gray-500 font-medium">${timeStr}</span>
+                                <div class="relative inline-block shrink-0">
+                                    <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge text-3xs px-2 py-0.5 pr-5 rounded-full font-bold cursor-pointer transition ${badgeClass} bg-gray-900/90 max-w-[6.7rem]">
+                                        <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
+                                        <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
+                                        <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
+                                        <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5">
+                                        <i class="fa-solid fa-chevron-down text-3xs opacity-60"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="space-y-1 text-left rounded-2xl focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-0">
+                                <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full focus:outline-none text-left">
+                                    <h3 class="text-sm font-semibold text-white leading-snug ${isExpanded ? '' : 'line-clamp-3'}">${cleanTitle}</h3>
+                                </button>
+                                ${descriptionMarkup}
+                            </div>
+                            ${cardTagsHtml}
+                            <div class="mt-auto flex items-center gap-2 pt-1.5">
+                                <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-2.5 py-1 text-3xs font-bold text-gray-300 hover:text-white hover:border-blue-500/40 transition">
+                                    <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[11px]"></i>
+                                    <span>${expandLabel}</span>
+                                </button>
+                                <button type="button" onclick="startEditingTimelineCard('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-2.5 py-1 text-3xs font-bold text-gray-300 hover:text-white hover:border-blue-500/40 transition">
+                                    <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                                    <span>Edit</span>
+                                </button>
+                            </div>
+                        </article>
+                        `;
+                    }
                 }
             });
             html += `</div>`;
