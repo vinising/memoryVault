@@ -1416,15 +1416,31 @@ async function clearTimelineSearch() {
 }
 window.clearTimelineSearch = clearTimelineSearch;
 
-async function renderTimelineView() {
+function withPreservedTimelineScroll(renderAction) {
+    if (!timelinePane) {
+        renderAction();
+        return;
+    }
+
+    const previousScrollTop = timelinePane.scrollTop;
+    renderAction();
+    window.requestAnimationFrame(() => {
+        timelinePane.scrollTop = previousScrollTop;
+    });
+}
+
+async function renderTimelineView(options = {}) {
     if (!timelineContainer) return;
+    const { preserveScroll = false, showLoading = true } = options;
     
-    timelineContainer.innerHTML = `
-        <div class="flex justify-center items-center py-12 space-x-2">
-            <i class="fa-solid fa-circle-notch animate-spin text-xl text-blue-500"></i>
-            <span class="text-sm text-gray-400 font-medium">Reconstructing timeline records...</span>
-        </div>
-    `;
+    if (showLoading) {
+        timelineContainer.innerHTML = `
+            <div class="flex justify-center items-center py-12 space-x-2">
+                <i class="fa-solid fa-circle-notch animate-spin text-xl text-blue-500"></i>
+                <span class="text-sm text-gray-400 font-medium">Reconstructing timeline records...</span>
+            </div>
+        `;
+    }
     
     try {
         const res = await fetch(`${API_BASE}/search?q=`);
@@ -1437,7 +1453,11 @@ async function renderTimelineView() {
         updateTimelineTagFiltersUI();
         
         // Execute rendering of filtered entries
-        renderFilteredTimeline();
+        if (preserveScroll) {
+            withPreservedTimelineScroll(() => renderFilteredTimeline());
+        } else {
+            renderFilteredTimeline();
+        }
         
     } catch (err) {
         timelineContainer.innerHTML = `
@@ -1880,7 +1900,7 @@ async function updateEntryStatusAsync(id, newStatus) {
         if (res.ok) {
             refreshMetrics();
             // Automatically refresh chronological timeline immediately
-            renderTimelineView();
+            renderTimelineView({ preserveScroll: true, showLoading: false });
         } else {
             console.error(`Could not update entry status for ${formattedId}`);
         }
