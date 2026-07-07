@@ -123,6 +123,22 @@ function renderTimelineLayoutToggle() {
     });
 }
 
+function renderTimelineLayoutToggle() {
+    const toggleContainer = document.getElementById("timelineLayoutToggle");
+    if (!toggleContainer) return;
+    
+    toggleContainer.innerHTML = '';
+    
+    ENABLED_TIMELINE_VIEWS.forEach(view => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = view.charAt(0).toUpperCase() + view.slice(1);
+        btn.id = `timeline${view.charAt(0).toUpperCase() + view.slice(1)}ViewBtn`;
+        btn.onclick = () => setTimelineLayoutMode(view);
+        toggleContainer.appendChild(btn);
+    });
+}
+
 function syncTimelineLayoutToggle() {
     const activeMode = getTimelineLayoutMode();
     syncTimelineContentShellLayout();
@@ -1459,7 +1475,7 @@ async function renderTimelineView(options = {}) {
         timelineContainer.innerHTML = `
             <div class="flex justify-center items-center py-12 space-x-2">
                 <i class="fa-solid fa-circle-notch animate-spin text-xl text-blue-500"></i>
-                <span class="text-sm text-gray-400 font-medium">Reconstructing timeline records...</span>
+                <span class="text-xs text-gray-400 font-medium">Reconstructing timeline records...</span>
             </div>
         `;
     }
@@ -1512,7 +1528,7 @@ function updateTimelineTagFiltersUI() {
         return countDelta !== 0 ? countDelta : left.localeCompare(right);
     });
     if (uniqueTags.length === 0) {
-        tagFiltersContainer.innerHTML = `<span class="text-[10px] text-gray-500 italic">No tags in timeline items</span>`;
+        tagFiltersContainer.innerHTML = `<span class="text-[11px] text-gray-500 italic">No tags in timeline items</span>`;
         return;
     }
 
@@ -1526,9 +1542,9 @@ function updateTimelineTagFiltersUI() {
         const chipStateClass = isActive ? " is-active" : "";
 
         chipsHtml += `
-            <button type="button" data-timeline-tag-control="true" onclick="toggleTimelineTagFilter('${tag}')" class="timeline-tag-chip${chipStateClass} inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium tracking-[0.01em] transition whitespace-nowrap">
+            <button type="button" data-timeline-tag-control="true" onclick="toggleTimelineTagFilter('${tag}')" class="timeline-tag-chip${chipStateClass} inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium tracking-[0.01em] transition whitespace-nowrap">
                 <span>#${tag}</span>
-                <span class="timeline-tag-chip-count rounded-full px-1.5 py-0.5 text-[9px] font-semibold">${tagMap[tag]}</span>
+                <span class="timeline-tag-chip-count rounded-full px-1.5 py-0.5 text-[11px] font-semibold">${tagMap[tag]}</span>
             </button>
         `;
     });
@@ -1538,9 +1554,9 @@ function updateTimelineTagFiltersUI() {
         ? `${activeTimelineTagFilters.length} active filter${activeTimelineTagFilters.length === 1 ? '' : 's'}`
         : `${uniqueTags.length} tags`;
     const activeFilterHtml = activeTimelineTagFilters.map((tag) => `
-        <button type="button" onclick="toggleTimelineTagFilter('${tag}')" class="timeline-tag-pill inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium transition whitespace-nowrap">
+        <button type="button" onclick="toggleTimelineTagFilter('${tag}')" class="timeline-tag-pill inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition whitespace-nowrap">
             <span>#${tag}</span>
-            <i class="fa-solid fa-xmark text-[10px] opacity-70"></i>
+            <i class="fa-solid fa-xmark text-[11px] opacity-70"></i>
         </button>
     `).join("");
 
@@ -1804,7 +1820,7 @@ function renderFilteredTimeline() {
 
             if (useStreamLayout && !streamHeaderRendered) {
                 html += `
-                    <div class="timeline-stream-header timeline-stream-grid hidden md:grid mb-3 rounded-[18px] text-[11px] font-semibold uppercase tracking-[0.08em]">
+                    <div class="timeline-stream-header timeline-stream-grid hidden md:grid mb-0 rounded-[18px] text-[11px] font-semibold uppercase tracking-[0.08em]">
                         <div class="timeline-stream-cell px-4 py-3 relative">Meta<div class="column-resizer" data-col="--stream-meta-col"></div></div>
                         <div class="timeline-stream-cell px-4 py-3 relative">Task Details<div class="column-resizer" data-col="--stream-details-col"></div></div>
                         <div class="timeline-stream-cell px-4 py-3">Tags</div>
@@ -1813,7 +1829,7 @@ function renderFilteredTimeline() {
                 streamHeaderRendered = true;
             }
 
-            html += `<div class="${useCardsLayout ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start' : 'space-y-3'}">`;
+            html += `<div class="${useCardsLayout ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start' : 'flex flex-col gap-0'}">`;
             
             groupEntries.forEach(entry => {
                 const dt = new Date(entry.timestamp);
@@ -1836,8 +1852,8 @@ function renderFilteredTimeline() {
                 const fullDescription = escapeHtml(decodedDescription);
                 const descriptionMarkup = decodedDescription
                     ? isExpanded
-                        ? `<p class="text-sm text-gray-300 whitespace-pre-line leading-6 break-words">${fullDescription}</p>`
-                        : `<p class="text-xs sm:text-sm text-gray-400 break-words ${useCardsLayout ? 'line-clamp-4 leading-5' : 'line-clamp-2 leading-6'}">${descPreview}</p>`
+                        ? `<p class="text-[13px] text-gray-200 whitespace-pre-line leading-6 break-words">${fullDescription}</p>`
+                        : `<p class="text-[12px] text-gray-300 break-words ${useCardsLayout ? 'line-clamp-4 leading-5' : 'line-clamp-2 leading-6'}">${descPreview}</p>`
                     : "";
                 
                 let cardTagsHtml = "";
@@ -1900,13 +1916,70 @@ function renderFilteredTimeline() {
                         </div>
                     </article>
                 `;
+                                } else if (useStreamLayout) {
+                    html += `
+                    <article class="bubble-system timeline-stream-card relative overflow-hidden transition duration-200 hover:shadow-lg group border ${cardStateClass}">
+                        <div class="timeline-stream-grid items-center">
+                            <div class="timeline-stream-cell timeline-stream-meta px-3 py-2 min-w-0">
+                                <div class="timeline-meta-line">
+                                    <span class="timeline-meta-key">Meta</span>
+                                    <span class="timeline-meta-value">
+                                        <span class="inline-flex px-1.5 py-0.5 rounded-md ${badgeColor} font-bold text-[11px] uppercase leading-none">${entry.bucket}</span>
+                                        <span class="timeline-meta-id ml-1">${entry.id}</span>
+                                        <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="ml-1 inline-flex items-center justify-center text-gray-500 hover:text-white transition group/copy" aria-label="Copy Ref">
+                                            <i class="fa-solid ${lastCopiedTimelineCardId === entry.id ? 'fa-check text-emerald-400' : 'fa-copy'} text-[11px]"></i>
+                                        </button>
+                                    </span>
+                                </div>
+                                <div class="timeline-meta-line">
+                                    <span class="timeline-meta-key">Date</span>
+                                    <span class="timeline-meta-value">${dateStr}, ${timeStr}</span>
+                                </div>
+                                <div class="timeline-meta-line">
+                                    <span class="timeline-meta-key">Status</span>
+                                    <span class="timeline-meta-value">
+                                        <span class="relative inline-block min-w-0 pointer-events-auto">
+                                            <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge timeline-meta-select cursor-pointer transition bg-transparent relative z-20">
+                                            <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
+                                            <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
+                                            <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
+                                            <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
+                                            </select>
+                                            <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5">
+                                                <i class="fa-solid fa-chevron-down text-3xs opacity-60"></i>
+                                            </span>
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col">
+                                <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full h-full min-w-0 space-y-1 text-left focus:outline-none">
+                                    <h3 class="min-w-0 text-base md:text-lg font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
+                                    ${isExpanded
+                                        ? `<p class="text-[13px] text-gray-200 whitespace-pre-line leading-6 break-words">${fullDescription}</p>`
+                                        : decodedDescription
+                                            ? `<p class="text-[12px] text-gray-300 leading-6 line-clamp-1 break-words">${streamDescPreview}</p>`
+                                            : `<span class="text-[11px] text-gray-400">No description</span>`}
+                                </button>
+                            </div>
+                            <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex items-start content-start">
+                                ${streamTagsHtml || `<span class="text-[11px] text-gray-400">No tags</span>`}
+                            </div>
+                        </div>
+                        ${decodedDescription ? `
+                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="absolute bottom-1.5 right-1.5 text-gray-500 hover:text-white transition focus:outline-none text-[11px] z-20" aria-label="Toggle details">
+                            <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                        </button>
+                        ` : ''}
+                    </article>
+                `;
                 } else if (useCardsLayout) {
                     html += `
                     
                     <article class="bubble-system px-3 py-3 transition duration-200 hover:shadow-lg flex flex-col gap-2.5 group border ${isExpanded ? '' : 'min-h-[11rem]'} ${borderColor} ${cardStateClass}">
                         <div class="flex items-start justify-between gap-2">
                             <span class="text-3xs font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${entry.bucket}</span>
-                            <span class="text-[10px] rounded-lg px-1.5 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
+                            <span class="text-[11px] rounded-lg px-1.5 py-1 border border-gray-800 text-gray-500 font-mono bg-gray-950/60">${entry.id}</span>
                         </div>
                         <div class="flex items-center justify-between gap-2">
                             <span class="text-[11px] text-gray-500 font-medium">${timeStr}</span>
@@ -1922,73 +1995,17 @@ function renderFilteredTimeline() {
                                 </div>
                             </div>
                         </div>
-                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="space-y-1.5 text-left rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-0">
+                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="space-y-1 text-left rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-0">
                             <h3 class="text-sm font-semibold text-white leading-snug ${isExpanded ? '' : 'line-clamp-3'}">${cleanTitle}</h3>
                             ${descriptionMarkup}
                         </button>
                         ${cardTagsHtml}
                         <div class="mt-auto flex items-center gap-2 pt-1.5">
                             <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-2.5 py-1 text-3xs font-bold text-gray-300 hover:text-white hover:border-blue-500/40 transition">
-                                <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px]"></i>
+                                <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[11px]"></i>
                                 <span>${expandLabel}</span>
                             </button>
-                            <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="inline-flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-950/80 px-2.5 py-1 text-3xs font-bold ${lastCopiedTimelineCardId === entry.id ? 'text-emerald-300 border-emerald-500/30' : 'text-gray-300 hover:text-white hover:border-blue-500/40'} transition">
-                                <i class="fa-solid ${lastCopiedTimelineCardId === entry.id ? 'fa-check' : 'fa-copy'} text-[10px]"></i>
-                                <span>${copyLabel}</span>
-                            </button>
                         </div>
-                    </article>
-                `;
-                } else if (useStreamLayout) {
-                    html += `
-                    <article class="bubble-system timeline-stream-card overflow-hidden transition duration-200 hover:shadow-lg group border ${cardStateClass}">
-                        <div class="timeline-stream-grid items-stretch">
-                            <div class="timeline-stream-cell timeline-stream-meta px-3 py-3 min-w-0">
-                                <div class="timeline-meta-line">
-                                    <span class="timeline-meta-key">Meta</span>
-                                    <span class="timeline-meta-value">
-                                        <span class="inline-flex px-1.5 py-0.5 rounded-md ${badgeColor} font-bold text-[10px] uppercase leading-none">${entry.bucket}</span>
-                                        <span class="timeline-meta-id ml-1">${entry.id}</span>
-                                        <button type="button" onclick="copyTimelineCardReference('${entry.id}')" class="ml-1 inline-flex items-center justify-center text-gray-500 hover:text-white transition group/copy" aria-label="Copy Ref">
-                                            <i class="fa-solid ${lastCopiedTimelineCardId === entry.id ? 'fa-check text-emerald-400' : 'fa-copy'} text-[10px]"></i>
-                                        </button>
-                                    </span>
-                                </div>
-                                <div class="timeline-meta-line">
-                                    <span class="timeline-meta-key">Date</span>
-                                    <span class="timeline-meta-value">${dateStr}, ${timeStr}</span>
-                                </div>
-                                <div class="timeline-meta-line">
-                                    <span class="timeline-meta-key">Status</span>
-                                    <span class="timeline-meta-value">
-                                        <span class="relative inline-block min-w-0">
-                                            <select onchange="updateEntryStatusAsync('${entry.id}', this.value)" class="appearance-none outline-none status-badge timeline-meta-select cursor-pointer transition bg-transparent">
-                                            <option value="open" class="bg-gray-800 text-yellow-500" ${currentStatus === 'open' ? 'selected' : ''}>OPEN</option>
-                                            <option value="in-progress" class="bg-gray-800 text-blue-400" ${currentStatus === 'in-progress' ? 'selected' : ''}>IN-PROGRESS</option>
-                                            <option value="done" class="bg-gray-800 text-green-500" ${currentStatus === 'done' ? 'selected' : ''}>DONE</option>
-                                            <option value="archived" class="bg-gray-800 text-gray-500" ${currentStatus === 'archived' ? 'selected' : ''}>ARCHIVED</option>
-                                            </select>
-                                        </span>
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="timeline-stream-cell px-4 py-3 md:py-4 min-w-0 flex flex-col">
-                                <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full h-full min-w-0 space-y-1.5 text-left focus:outline-none">
-                                    <h3 class="min-w-0 text-lg md:text-xl font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
-                                    ${isExpanded
-                                        ? `<p class="text-sm text-gray-300 whitespace-pre-line leading-6 break-words">${fullDescription}</p>`
-                                        : decodedDescription
-                                            ? `<p class="text-sm text-gray-400 leading-6 line-clamp-2 break-words">${streamDescPreview}</p>`
-                                            : `<span class="text-sm text-gray-500">No description</span>`}
-                                </button>
-                            </div>
-                            <div class="timeline-stream-cell px-4 py-3 md:py-4 min-w-0 flex items-start content-start">
-                                ${streamTagsHtml || `<span class="text-sm text-gray-500">No tags</span>`}
-                            </div>
-                        </div>
-                        <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full border-t border-gray-700/30 bg-gray-900/10 hover:bg-gray-800/60 py-0.5 flex items-center justify-center transition focus:outline-none">
-                            <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[9px] text-gray-600"></i>
-                        </button>
                     </article>
                 `;
                 }
@@ -2362,13 +2379,13 @@ function appendCompletedEntryBubble(entry, offlineQueued = false) {
     `;
 
     if (entry.tags) {
-        const tagBadges = entry.tags.split(",").map(t => `<span class="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-3xs font-bold border border-gray-700/50">#${t.trim()}</span>`).join(" ");
+        const tagBadges = entry.tags.split(",").map(t => `<span class="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-3xs font-bold border border-gray-700/50">#${t.trim()}</span>`).join(" ");
         innerHTML += `<div class="flex flex-wrap gap-1.5">${tagBadges}</div>`;
     }
 
     if (entry.description) {
         const parsedDesc = parseDoubleBracketsInHTML(parseMiniMarkdown(decodeHtmlEntities(entry.description)));
-        innerHTML += `<div class="text-xs text-gray-400 leading-normal italic pl-2.5 border-l-2 border-gray-700 mt-1">${parsedDesc}</div>`;
+        innerHTML += `<div class="text-[12px] text-gray-300 leading-normal pl-2.5 border-l-2 border-gray-700 mt-1">${parsedDesc}</div>`;
     }
 
     let attachmentHtml = "";
