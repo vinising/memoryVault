@@ -2083,15 +2083,15 @@ function renderFilteredTimeline() {
                                     </div>
                                 </div>
                                 <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col relative group/details-cell">
-                                    <div class="w-full h-full min-w-0 space-y-1 text-left ${decodedDescription && isExpanded ? 'mb-8' : ''}">
+                                    <div class="w-full h-full min-w-0 space-y-1 text-left ${decodedDescription && isExpanded ? 'mb-10' : ''}">
                                         <button type="button" onclick="toggleTimelineCardExpanded('${entry.id}')" class="w-full focus:outline-none text-left">
                                             <h3 class="min-w-0 text-base md:text-lg font-semibold text-white leading-tight ${isExpanded ? '' : 'truncate'}">${cleanTitle}</h3>
                                         </button>
                                         ${descriptionMarkup || `<span class="text-[11px] text-gray-400">No description</span>`}
                                     </div>
-                                    <button type="button" onclick="startEditingTimelineCard('${entry.id}')" class="absolute bottom-1.5 right-1.5 opacity-0 group-hover/details-cell:opacity-100 focus:opacity-100 bg-gray-900/90 hover:bg-gray-800/90 border border-gray-800 hover:border-gray-700/50 rounded-lg px-2 py-0.5 text-3xs font-mono font-bold text-gray-400 hover:text-white transition flex items-center gap-1 shadow-sm">
-                                        <i class="fa-solid fa-pen-to-square text-[10px]"></i>
-                                        <span>${isExpanded ? 'Edit' : 'Edit & Expand'}</span>
+                                    <button type="button" onclick="startEditingTimelineCard('${entry.id}')" class="absolute bottom-1 right-2 focus:opacity-100 bg-gray-900 border border-gray-800 hover:border-gray-700/80 rounded-lg px-2 py-1 text-3xs font-bold text-gray-300 hover:text-white transition flex items-center gap-1.5 shadow-md z-35" style="font-size: 11px;">
+                                        <i class="fa-solid fa-pen-to-square text-[11px] text-blue-400"></i>
+                                        <span>Edit</span>
                                     </button>
                                 </div>
                                 <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex items-start content-start">
