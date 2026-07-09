@@ -2028,11 +2028,11 @@ function renderFilteredTimeline() {
                                     <div class="w-full space-y-3 text-left">
                                         <div>
                                             <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Title</label>
-                                            <input type="text" id="edit-title-${entry.id}" value="${escapeHtml(entry.title || '')}" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-sm font-semibold text-white focus:outline-none focus:border-blue-500 transition" />
+                                            <input type="text" id="edit-title-${entry.id}" value="${escapeHtml(entry.title || '')}" class="w-full bg-[#050811] border border-gray-800 rounded-lg px-2.5 py-1 text-sm font-semibold text-white focus:outline-none focus:border-blue-500 transition" />
                                         </div>
                                         <div>
                                             <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Description (Markdown)</label>
-                                            <textarea id="edit-desc-${entry.id}" rows="4" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono transition leading-relaxed">${escapeHtml(entry.description || '').replace(/\*\*Original Note:\*\*[\s\S]*/, '').trim()}</textarea>
+                                            <textarea id="edit-desc-${entry.id}" rows="4" class="w-full bg-[#050811] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono transition leading-relaxed">${escapeHtml(entry.description || '').replace(/\*\*Original Note:\*\*[\s\S]*/, '').trim()}</textarea>
                                         </div>
                                         <div class="flex gap-2 justify-start pt-1">
                                             <button type="button" onclick="cancelEditingTimelineCard()" class="px-3 py-1 text-3xs font-bold bg-gray-800 hover:bg-gray-750 text-gray-400 hover:text-white rounded-lg transition border border-transparent hover:border-gray-700/50">Cancel</button>
@@ -2042,7 +2042,7 @@ function renderFilteredTimeline() {
                                 </div>
                                 <div class="timeline-stream-cell px-3 py-2.5 md:py-3 min-w-0 flex flex-col justify-start self-start">
                                     <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Tags</label>
-                                    <input type="text" id="edit-tags-${entry.id}" value="${escapeHtml(entry.tags || '')}" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition" placeholder="course, learning" />
+                                    <input type="text" id="edit-tags-${entry.id}" value="${escapeHtml(entry.tags || '')}" class="w-full bg-[#050811] border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition" placeholder="course, learning" />
                                 </div>
                             </div>
                         </article>
@@ -2117,15 +2117,15 @@ function renderFilteredTimeline() {
                             <div class="space-y-3">
                                 <div>
                                     <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Title</label>
-                                    <input type="text" id="edit-title-${entry.id}" value="${escapeHtml(entry.title || '')}" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-sm font-semibold text-white focus:outline-none focus:border-blue-500 transition" />
+                                    <input type="text" id="edit-title-${entry.id}" value="${escapeHtml(entry.title || '')}" class="w-full bg-[#050811] border border-gray-800 rounded-lg px-2.5 py-1 text-sm font-semibold text-white focus:outline-none focus:border-blue-500 transition" />
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Description (Markdown)</label>
-                                    <textarea id="edit-desc-${entry.id}" rows="5" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono transition leading-relaxed">${escapeHtml(entry.description || '').replace(/\*\*Original Note:\*\*[\s\S]*/, '').trim()}</textarea>
+                                    <textarea id="edit-desc-${entry.id}" rows="5" class="w-full bg-[#050811] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono transition leading-relaxed">${escapeHtml(entry.description || '').replace(/\*\*Original Note:\*\*[\s\S]*/, '').trim()}</textarea>
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Tags</label>
-                                    <input type="text" id="edit-tags-${entry.id}" value="${escapeHtml(entry.tags || '')}" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition" placeholder="course, learning" />
+                                    <input type="text" id="edit-tags-${entry.id}" value="${escapeHtml(entry.tags || '')}" class="w-full bg-[#050811] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 transition" placeholder="course, learning" />
                                 </div>
                                 <div class="flex gap-2 justify-end pt-1">
                                     <button type="button" onclick="cancelEditingTimelineCard()" class="px-3 py-1.5 text-3xs font-bold bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg transition border border-transparent">Cancel</button>
