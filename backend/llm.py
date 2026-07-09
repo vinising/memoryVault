@@ -1,16 +1,23 @@
 import time
 import httpx
-from typing import Optional, Tuple, Dict, Any
-from backend.config import OLLAMA_HOST, OLLAMA_MODEL, LLM_PROXY_HOST
+from typing import Optional, Tuple, Dict, Any, List
+from backend.config import OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_TIMEOUT_SECONDS, LLM_PROXY_HOST, LLM_PROXY_TIMEOUT_SECONDS
 from backend.models import LLMTrace
 from backend.store import EntryStore
+
+def _messages_to_prompt(messages: List[Dict[str, str]]) -> str:
+    return "\n\n".join(
+        f"{str(message.get('role', 'user')).upper()}: {str(message.get('content', '')).strip()}"
+        for message in messages
+        if str(message.get("content", "")).strip()
+    )
 
 def evaluate_and_generate(prompt: str, store: EntryStore) -> Tuple[str, str, int]:
     """
     Core LLM router with fallback execution.
     Queries local Ollama (gemma4) first. If Ollama is down/times out or evaluates that
     the prompt deserves higher reasoning (e.g., contains complex analytical asks),
-    it fails over to the configured LLM proxy at Port 8080.
+    it fails over to the configured hosted-model proxy at Port 8080.
     
     Returns:
         (response_text, model_used, latency_ms)
@@ -22,12 +29,12 @@ def evaluate_and_generate(prompt: str, store: EntryStore) -> Tuple[str, str, int
     
     # Simple rule-based prompt routing/classification as a secure first tier:
     # If a prompt requests complex code or structural optimization templates,
-    # we pre-assign fallback to LLM proxy to optimize local cycles.
+    # route to the hosted proxy instead of local Ollama.
     force_proxy = False
     complex_triggers = ["architecture diagram", "database setup script", "generate code", "deploy kubernetes", "refactor api"]
     if any(trigger in prompt.lower() for trigger in complex_triggers):
         force_proxy = True
-        print("[LLM Router] Complex directive detected. Auto-delegating to proxy 8080.")
+        print("[LLM Router] Complex directive detected. Routing to hosted proxy on 8080.")
 
     if not force_proxy:
         try:
@@ -41,16 +48,15 @@ def evaluate_and_generate(prompt: str, store: EntryStore) -> Tuple[str, str, int
                     "temperature": 0.3
                 }
             }
-            # Set a fast 10-second timeout to pivot immediately to 8080 if Ollama hangs
-            with httpx.Client(timeout=10.0) as client:
-                res = httpx.post(url, json=payload)
+            with httpx.Client(timeout=OLLAMA_TIMEOUT_SECONDS) as client:
+                res = client.post(url, json=payload)
                 if res.status_code == 200:
                     data = res.json()
                     response_text = data.get("response", "").strip()
                     
                     # Deep check: does the returned response advise delegation?
                     if "requires specialized reasoning" in response_text.lower() or "delegate to high-reasoning" in response_text.lower():
-                        print("[LLM Router] local model requested delegation. Re-routing to proxy 8080.")
+                        print("[LLM Router] local model requested delegation. Re-routing to hosted proxy on 8080.")
                         force_proxy = True
                     else:
                         latency_ms = int((time.perf_counter() - start_time) * 1000)
@@ -67,17 +73,17 @@ def evaluate_and_generate(prompt: str, store: EntryStore) -> Tuple[str, str, int
                     print(f"[LLM Router] Ollama returned non-200 code: {res.status_code}. Executing fallback.")
                     force_proxy = True
         except (httpx.ConnectError, httpx.TimeoutException, Exception) as e:
-            print(f"[LLM Router] Ollama is offline or timed out: {str(e)}. Pivoting to proxy 8080.")
+            print(f"[LLM Router] Ollama is offline or timed out: {str(e)}. Pivoting to hosted proxy on 8080.")
             force_proxy = True
 
-    # --- FALLBACK PATHWAY: Port 8080 Proxy ---
+    # --- HOSTED FALLBACK PATHWAY: Port 8080 Proxy ---
     if force_proxy:
-        model_used = "proxy/8080"
+        model_used = "hosted-proxy/8080"
         proxy_api_url = f"{LLM_PROXY_HOST}/v1/chat/completions"
         alternative_api_url = f"{LLM_PROXY_HOST}/api/generate" # Supports secondary port mappings too
         
         try:
-            # Plan A: Try OpenAI standard API format to proxy/8080
+            # Plan A: Try OpenAI standard API format to hosted proxy/8080
             payload_openai = {
                 "model": "gpt-3.5-turbo",
                 "messages": [
@@ -86,7 +92,7 @@ def evaluate_and_generate(prompt: str, store: EntryStore) -> Tuple[str, str, int
                 ],
                 "temperature": 0.5
             }
-            with httpx.Client(timeout=15.0) as client:
+            with httpx.Client(timeout=LLM_PROXY_TIMEOUT_SECONDS) as client:
                 res = client.post(proxy_api_url, json=payload_openai)
                 if res.status_code == 200:
                     data = res.json()
@@ -109,7 +115,7 @@ def evaluate_and_generate(prompt: str, store: EntryStore) -> Tuple[str, str, int
                 "prompt": prompt,
                 "stream": False
             }
-            with httpx.Client(timeout=15.0) as client:
+            with httpx.Client(timeout=LLM_PROXY_TIMEOUT_SECONDS) as client:
                 res = client.post(alternative_api_url, json=payload_simple)
                 if res.status_code == 200:
                     data = res.json()
@@ -130,13 +136,138 @@ def evaluate_and_generate(prompt: str, store: EntryStore) -> Tuple[str, str, int
     # If everything is offline, report offline diagnostic instructions cleanly to client
     latency_ms = int((time.perf_counter() - start_time) * 1000)
     response_text = (
-        "⚠️ **All Local LLM providers are offline.**\n\n"
+        "⚠️ **Local Ollama and the hosted proxy are unavailable.**\n\n"
         "To get intelligent backlog summaries and natural-language queries:\n"
         "1. Launch Ollama locally (`ollama run gemma4`)\n"
-        "2. Or ensure your high-reasoning development proxy server is listening on `http://localhost:8080`."
+        "2. Or ensure your hosted-model proxy server is listening on `http://localhost:8080`."
     )
     store.add_llm_trace(LLMTrace(
         prompt=prompt,
+        response=response_text,
+        model_used="none/offline",
+        latency_ms=latency_ms,
+        status="failed"
+    ))
+    return response_text, "none/failed", latency_ms
+
+
+def evaluate_messages(messages: List[Dict[str, str]], store: EntryStore, trace_label: Optional[str] = None) -> Tuple[str, str, int]:
+    """
+    Message-oriented LLM router for session-aware chat.
+    Uses Ollama chat when available and preserves OpenAI-compatible messages for the proxy.
+    """
+    start_time = time.perf_counter()
+    model_used = f"ollama/{OLLAMA_MODEL}"
+    status = "success"
+    response_text = ""
+    flattened_prompt = _messages_to_prompt(messages)
+    trace_prompt = f"{trace_label}\n\n{flattened_prompt}" if trace_label else flattened_prompt
+
+    force_proxy = False
+    complex_triggers = ["architecture diagram", "database setup script", "generate code", "deploy kubernetes", "refactor api"]
+    if any(trigger in flattened_prompt.lower() for trigger in complex_triggers):
+        force_proxy = True
+        print("[LLM Router] Complex directive detected. Routing message call to hosted proxy on 8080.")
+
+    if not force_proxy:
+        try:
+            url = f"{OLLAMA_HOST}/api/chat"
+            payload = {
+                "model": OLLAMA_MODEL,
+                "messages": messages,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3
+                }
+            }
+            with httpx.Client(timeout=OLLAMA_TIMEOUT_SECONDS) as client:
+                res = client.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    response_text = (data.get("message") or {}).get("content", "").strip()
+                    if not response_text:
+                        response_text = data.get("response", "").strip()
+
+                    if "requires specialized reasoning" in response_text.lower() or "delegate to high-reasoning" in response_text.lower():
+                        print("[LLM Router] local model requested delegation. Re-routing message call to hosted proxy on 8080.")
+                        force_proxy = True
+                    else:
+                        latency_ms = int((time.perf_counter() - start_time) * 1000)
+                        store.add_llm_trace(LLMTrace(
+                            prompt=trace_prompt,
+                            response=response_text,
+                            model_used=model_used,
+                            latency_ms=latency_ms,
+                            status=status
+                        ))
+                        return response_text, model_used, latency_ms
+                else:
+                    print(f"[LLM Router] Ollama chat returned non-200 code: {res.status_code}. Executing fallback.")
+                    force_proxy = True
+        except (httpx.ConnectError, httpx.TimeoutException, Exception) as e:
+            print(f"[LLM Router] Ollama chat is offline or timed out: {str(e)}. Pivoting to hosted proxy on 8080.")
+            force_proxy = True
+
+    if force_proxy:
+        model_used = "hosted-proxy/8080"
+        proxy_api_url = f"{LLM_PROXY_HOST}/v1/chat/completions"
+        alternative_api_url = f"{LLM_PROXY_HOST}/api/generate"
+
+        try:
+            payload_openai = {
+                "model": "gpt-3.5-turbo",
+                "messages": messages,
+                "temperature": 0.5
+            }
+            with httpx.Client(timeout=LLM_PROXY_TIMEOUT_SECONDS) as client:
+                res = client.post(proxy_api_url, json=payload_openai)
+                if res.status_code == 200:
+                    data = res.json()
+                    response_text = data["choices"][0]["message"]["content"].strip()
+                    latency_ms = int((time.perf_counter() - start_time) * 1000)
+                    store.add_llm_trace(LLMTrace(
+                        prompt=trace_prompt,
+                        response=response_text,
+                        model_used=model_used,
+                        latency_ms=latency_ms,
+                        status=status
+                    ))
+                    return response_text, model_used, latency_ms
+        except Exception:
+            pass
+
+        try:
+            payload_simple = {
+                "prompt": flattened_prompt,
+                "stream": False
+            }
+            with httpx.Client(timeout=LLM_PROXY_TIMEOUT_SECONDS) as client:
+                res = client.post(alternative_api_url, json=payload_simple)
+                if res.status_code == 200:
+                    data = res.json()
+                    response_text = (data.get("response") or data.get("text") or "").strip()
+                    if response_text:
+                        latency_ms = int((time.perf_counter() - start_time) * 1000)
+                        store.add_llm_trace(LLMTrace(
+                            prompt=trace_prompt,
+                            response=response_text,
+                            model_used=model_used,
+                            latency_ms=latency_ms,
+                            status=status
+                        ))
+                        return response_text, model_used, latency_ms
+        except Exception as e:
+            print(f"[LLM Router] Critical Error: Fallback Proxy also unreachable: {str(e)}")
+
+    latency_ms = int((time.perf_counter() - start_time) * 1000)
+    response_text = (
+        "Local Ollama and the hosted proxy are unavailable.\n\n"
+        "To get intelligent backlog summaries and natural-language queries:\n"
+        "1. Launch Ollama locally (`ollama run gemma4`)\n"
+        "2. Or ensure your hosted-model proxy server is listening on `http://localhost:8080`."
+    )
+    store.add_llm_trace(LLMTrace(
+        prompt=trace_prompt,
         response=response_text,
         model_used="none/offline",
         latency_ms=latency_ms,

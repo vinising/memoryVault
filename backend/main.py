@@ -10,7 +10,7 @@ from pathlib import Path
 if str(Path(__file__).parent.parent) not in sys.path:
     sys.path.append(str(Path(__file__).parent.parent))
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,9 +18,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import MEMORYVAULT_HOST, MEMORYVAULT_PORT, MEMORYVAULT_TOKEN, print_config
-from backend.models import NewEntry, Entry, PartialEntry, BucketEnum, BucketModel
+from backend.models import NewEntry, Entry, PartialEntry, BucketEnum, BucketModel, ChatRequest, ChatResponse
 from backend.store import EntryStore
-from backend.llm import summarize_backlog, evaluate_and_generate, classify_and_tag_entry
+from backend.llm import summarize_backlog, evaluate_and_generate, evaluate_messages, classify_and_tag_entry
 
 app = FastAPI(
     title="MemoryVault API",
@@ -246,70 +246,167 @@ def summarize():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/chat")
-def chat_reason(query: Dict[str, str]):
+CHAT_SYSTEM_PROMPT = (
+    "You are MemoryVault's personal offline productivity and knowledge companion. "
+    "Answer from the user's saved goals, notes, tasks, issues, and prior turns when relevant. "
+    "Be concise, practical, and cite source entries with Obsidian-style links such as [[#0012]]. "
+    "If the available notes do not answer the question, say so and offer a useful next step."
+)
+
+CHAT_STOPWORDS = {
+    "the", "and", "or", "to", "for", "in", "is", "it", "of", "on", "with", "a", "an",
+    "what", "how", "why", "where", "who", "show", "get", "find", "search", "list"
+}
+
+def _compact_text(value: Optional[str], limit: int = 900) -> str:
+    text = (value or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "..."
+
+def _clean_search_query(user_query: str) -> str:
+    words = [w.strip("?,.!'\"()[]{}").lower() for w in user_query.split()]
+    clean_words = [w for w in words if w and w not in CHAT_STOPWORDS and len(w) > 2]
+    return " ".join(clean_words)
+
+def _entry_to_context_dict(entry: Any) -> Dict[str, Any]:
+    if isinstance(entry, dict):
+        return {
+            "id": entry.get("id"),
+            "bucket": entry.get("bucket"),
+            "title": entry.get("title"),
+            "tags": entry.get("tags") or "",
+            "description": _compact_text(entry.get("description")),
+            "timestamp": entry.get("timestamp"),
+            "status": entry.get("status")
+        }
+    return {
+        "id": entry.id,
+        "bucket": entry.bucket.value if hasattr(entry.bucket, "value") else entry.bucket,
+        "title": entry.title,
+        "tags": entry.tags or "",
+        "description": _compact_text(entry.description),
+        "timestamp": entry.timestamp,
+        "status": entry.status
+    }
+
+def _referenced_context_ids(turns: List[Dict[str, Any]]) -> List[str]:
+    ids = []
+    for turn in turns:
+        for entry_id in turn.get("context_entry_ids") or []:
+            if entry_id not in ids:
+                ids.append(entry_id)
+    return ids
+
+def _retrieve_chat_context(user_query: str, recent_turns: List[Dict[str, Any]], mode: str = "hybrid") -> List[Dict[str, Any]]:
+    merged: Dict[str, Dict[str, Any]] = {}
+
+    def add_entry(entry: Any):
+        item = _entry_to_context_dict(entry)
+        entry_id = item.get("id")
+        if entry_id and entry_id not in merged:
+            merged[entry_id] = item
+
+    search_str = _clean_search_query(user_query)
+    normalized_mode = (mode or "hybrid").lower()
+
+    if search_str and normalized_mode in {"hybrid", "semantic"}:
+        try:
+            if store.has_embeddings():
+                for entry in store.search_entries(search_str, mode="semantic")[:8]:
+                    add_entry(entry)
+        except Exception as sem_err:
+            print(f"[Chat Retrieval] Semantic search skipped: {sem_err}")
+
+    if search_str and normalized_mode in {"hybrid", "keyword"}:
+        try:
+            for entry in store.search_entries(search_str, sort_by="relevance")[:10]:
+                add_entry(entry)
+        except Exception as search_err:
+            print(f"[Chat Retrieval] Keyword search skipped: {search_err}")
+
+    all_entries = store.export_all_entries()
+    entries_by_id = {e.get("id"): e for e in all_entries if e.get("id")}
+    for entry_id in _referenced_context_ids(recent_turns):
+        if entry_id in entries_by_id:
+            add_entry(entries_by_id[entry_id])
+
+    for entry in all_entries[-6:]:
+        add_entry(entry)
+
+    return list(merged.values())[:15]
+
+def _build_session_summary(turns: List[Dict[str, Any]], limit: int = 1200) -> str:
+    lines = []
+    for turn in turns[-8:]:
+        role = turn.get("role", "user")
+        content = _compact_text(turn.get("content"), 220)
+        if content:
+            lines.append(f"{role}: {content}")
+    return _compact_text("\n".join(lines), limit)
+
+def _build_chat_messages(
+    user_query: str,
+    conversation: Dict[str, Any],
+    recent_turns: List[Dict[str, Any]],
+    context_entries: List[Dict[str, Any]]
+) -> List[Dict[str, str]]:
+    messages = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
+    summary = (conversation or {}).get("summary") or ""
+    if summary:
+        messages.append({"role": "system", "content": f"Conversation summary:\n{summary}"})
+    if context_entries:
+        messages.append({
+            "role": "system",
+            "content": "Relevant MemoryVault entries as compact JSON:\n" + json.dumps(context_entries, ensure_ascii=False)
+        })
+    for turn in recent_turns[-8:]:
+        role = turn.get("role")
+        if role not in {"user", "assistant"}:
+            continue
+        content = _compact_text(turn.get("content"), 1200)
+        if content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": user_query})
+    return messages
+
+@app.post("/chat", response_model=ChatResponse)
+def chat_reason(query: ChatRequest):
     """
-    General natural-language lookup chat. Ask questions about tasks, goals, notes, or issues.
+    Session-aware natural-language lookup chat for tasks, goals, notes, or issues.
     """
-    user_query = query.get("query", "").strip()
+    user_query = query.query.strip()
     if not user_query:
         raise HTTPException(status_code=400, detail="Query text cannot be empty")
-        
+
     try:
-        import json
-        # RAG Search: Query the database FTS5 for user words to pull highly relevant context
-        words = [w.strip("?,.!'\"()[]{}").lower() for w in user_query.split()]
-        stopwords = {"the", "and", "or", "to", "for", "in", "is", "it", "of", "on", "with", "a", "an", "what", "how", "why", "where", "who", "show", "get", "find", "search", "list"}
-        clean_words = [w for w in words if w and w not in stopwords and len(w) > 2]
-        
-        candidates = []
-        if clean_words:
-            search_str = " ".join(clean_words)
-            candidates = store.search_entries(search_str)
-            
-        all_entries = store.export_all_entries()
-        recent_entries = all_entries[-15:] if len(all_entries) > 15 else all_entries
-        
-        merged_map = {}
-        for e in recent_entries:
-            merged_map[e["id"]] = e
-            
-        for c in candidates:
-            c_dict = {
-                "id": c.id,
-                "bucket": c.bucket.value if hasattr(c.bucket, "value") else c.bucket,
-                "title": c.title,
-                "tags": c.tags,
-                "description": c.description,
-                "timestamp": c.timestamp,
-                "status": c.status
-            }
-            merged_map[c.id] = c_dict
-            
-        context_entries = list(merged_map.values())
-        context_entries.sort(key=lambda x: x.get("id", ""))
-        
-        if len(context_entries) > 40:
-            context_entries = context_entries[:40]
-        
-        # Design detailed task prompt
-        prompt = (
-            "You are MemoryVault's personal offline productivity and knowledge companion chatbot.\n"
-            "An executive, researcher, or generalist user is asking you questions regarding their goals, notes, tasks, and issues.\n"
-            "Analyze and use the database context below to respond concisely relative to their ask:\n\n"
-            f"Context Database Data:\n{json.dumps(context_entries)}\n\n"
-            f"User Question: {user_query}\n\n"
-            "Instructions:\n"
-            "- Be precise, helpful, and use short, tidy bullet points.\n"
-            "- Incorporate hyper-references using Obsidian double-bracket links e.g. [[#0012]] where relevant so the user can easily trace which entries you are referencing.\n"
-            "- If the answer cannot be answered directly from the notes context, provide professional and constructive suggestions, noting that you could not find the exact answer in their notes."
+        conversation_id = store.ensure_conversation(query.conversation_id, title=user_query[:80])
+        conversation = store.get_conversation(conversation_id) or {}
+        recent_turns = store.get_recent_turns(conversation_id, limit=8)
+        context_entries = _retrieve_chat_context(user_query, recent_turns, query.mode or "hybrid")
+        context_entry_ids = [entry["id"] for entry in context_entries if entry.get("id")]
+        messages = _build_chat_messages(user_query, conversation, recent_turns, context_entries)
+
+        response, model_used, latency = evaluate_messages(
+            messages,
+            store,
+            trace_label=f"conversation:{conversation_id} context:{','.join(context_entry_ids)}"
         )
-        response, model_used, latency = evaluate_and_generate(prompt, store)
-        return {
-            "response": response,
-            "model_used": model_used,
-            "latency_ms": latency
-        }
+
+        store.add_conversation_turn(conversation_id, "user", user_query, context_entry_ids)
+        store.add_conversation_turn(conversation_id, "assistant", response, context_entry_ids, model_used, latency)
+
+        turn_count = store.get_conversation_turn_count(conversation_id)
+        if turn_count >= 12 and turn_count % 12 == 0:
+            store.update_conversation_summary(conversation_id, _build_session_summary(store.get_recent_turns(conversation_id, limit=12)))
+
+        return ChatResponse(
+            response=response,
+            conversation_id=conversation_id,
+            context_entry_ids=context_entry_ids,
+            model_used=model_used,
+            latency_ms=latency
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

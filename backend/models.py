@@ -33,7 +33,7 @@ class Attachment(BaseModel):
     size: int = Field(..., description="File size in bytes")
 
 class NewEntry(BaseModel):
-    bucket: Optional[str] = Field(default="TASK", description="Category of entry")
+    bucket: Optional[str] = Field(default=None, description="Category of entry; omit for AI classification")
     title: str = Field(..., min_length=1, description="One-line summary")
     tags: Optional[str] = Field(default="", description="Comma-separated tags")
     description: Optional[str] = Field(default="", description="Deep detailed description")
@@ -59,6 +59,18 @@ class PartialEntry(BaseModel):
     status: Optional[str] = None
     parent_id: Optional[str] = None
     attachments: Optional[List[Attachment]] = None
+
+class ChatRequest(BaseModel):
+    query: str = Field(..., min_length=1, description="User question or instruction")
+    conversation_id: Optional[str] = Field(default=None, description="Durable chat conversation id")
+    mode: Optional[str] = Field(default="hybrid", description="Context retrieval mode")
+
+class ChatResponse(BaseModel):
+    response: str
+    conversation_id: str
+    context_entry_ids: List[str] = Field(default_factory=list)
+    model_used: str
+    latency_ms: int
 
 # Local LLM Trace Model Schema
 class LLMTrace(BaseModel):

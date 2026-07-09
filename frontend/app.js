@@ -2,7 +2,8 @@
 const API_BASE = window.location.origin;
 
 // State management
-let currentBucket = "TASK";
+let currentBucket = null;
+let currentConversationId = localStorage.getItem("memoryvault_conversation_id") || null;
 let pendingInputPayload = null;
 let isOfflineMode = false;
 let currentViewEnv = "chat"; // 'chat', 'timeline', or 'graph'
@@ -824,6 +825,7 @@ function processRawInput(text) {
 
     // 2. Parse standard delimited entry (Bucket | Title | Tags | Description)
     const payload = parseEntryString(text);
+    applyCaptureModeToPayload(payload);
     payload.attachments = [...pendingAttachments];
     pendingAttachments = [];
     renderAttachmentTray();
@@ -905,7 +907,7 @@ function handleSlashCommand(commandStr) {
                 return;
             }
             const payload = parseEntryString(arg);
-            if (!payload.bucket) payload.bucket = currentBucket; // Default to UI selected quick bucket
+            applyCaptureModeToPayload(payload);
             
             // Attach attachments for slash command todo as well
             payload.attachments = [...pendingAttachments];
@@ -1074,16 +1076,39 @@ async function triggerRecentList() {
     searchEntries("");
 }
 
+function getCaptureModeLabel() {
+    return currentBucket || "AI Classify";
+}
+
+function syncCaptureModeLabel() {
+    if (quickBucketVal) quickBucketVal.textContent = getCaptureModeLabel();
+}
+
+function applyCaptureModeToPayload(payload) {
+    if (!payload.bucket && currentBucket) {
+        payload.bucket = currentBucket;
+    }
+    return payload;
+}
+
 async function askLlmGeneralChat(queryText) {
     appendSystemMessage("🧬 *Querying local evaluation models...*");
     try {
+        const chatPayload = { query: queryText };
+        if (currentConversationId) {
+            chatPayload.conversation_id = currentConversationId;
+        }
         const res = await fetch(`${API_BASE}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: queryText })
+            body: JSON.stringify(chatPayload)
         });
         if (res.ok) {
             const data = await res.json();
+            if (data.conversation_id) {
+                currentConversationId = data.conversation_id;
+                localStorage.setItem("memoryvault_conversation_id", currentConversationId);
+            }
             
             // Remove processing indicator
             removeLastTraceSpinner();
@@ -2241,6 +2266,7 @@ async function loadBuckets() {
         if (res.ok) {
             activeBuckets = await res.json();
             renderQuickBucketSelector();
+            syncCaptureModeLabel();
             
             // Re-render allocation bars components after fetching newest structures
             const metricsRes = await fetch(`${API_BASE}/metrics`);
@@ -2311,6 +2337,21 @@ function renderQuickBucketSelector() {
         </button>
     `).join("");
 
+    const aiClassifySelected = !currentBucket ? "ring-2 ring-blue-500/70 border-blue-500/40" : "border-transparent";
+    const aiClassifyHtml = `
+        <button type="button" onclick="selectAiClassify()" class="rounded-2xl border ${aiClassifySelected} text-sky-200 border-sky-500/20 bg-sky-500/10 hover:bg-sky-500/15 px-3 py-3 text-left transition">
+            <div class="flex items-center gap-2.5">
+                <div class="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-black/10 shrink-0">
+                    <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-xs font-black tracking-[0.14em] text-gray-500 uppercase">AI</div>
+                    <div class="text-sm font-semibold text-white truncate">AI Classify</div>
+                </div>
+            </div>
+        </button>
+    `;
+
     const bucketCardsHtml = activeBuckets.map((bucket) => {
         const meta = bucketMeta[bucket.name] || {
             icon: "fa-layer-group",
@@ -2376,9 +2417,10 @@ function renderQuickBucketSelector() {
         <div class="mt-5">
             <div class="flex items-center justify-between mb-3 gap-3">
                 <p class="text-xs font-bold tracking-[0.18em] text-gray-500 uppercase">Log As</p>
-                <span class="text-2xs text-gray-500">Current: ${currentBucket}</span>
+                <span class="text-2xs text-gray-500">Current: ${getCaptureModeLabel()}</span>
             </div>
             <div class="grid grid-cols-2 gap-2">
+                ${aiClassifyHtml}
                 ${bucketCardsHtml}
             </div>
         </div>
@@ -2434,7 +2476,7 @@ async function deleteCustomBucketAsync(bucketName) {
         if (res.ok) {
             appendSystemMessage(`🗑️ Custom category **${bucketName}** was successfully deleted.`);
             if (currentBucket === bucketName) {
-                selectQuickBucket("TASK");
+                selectAiClassify();
             }
             await loadBuckets();
             refreshMetrics();
@@ -2469,9 +2511,17 @@ function closeBucketModal() {
     pendingInputPayload = null;
 }
 
+function selectAiClassify() {
+    currentBucket = null;
+    syncCaptureModeLabel();
+    renderQuickBucketSelector();
+    setQuickBucketDropdownOpen(false);
+}
+
 function selectQuickBucket(bucket) {
     currentBucket = bucket;
-    if (quickBucketVal) quickBucketVal.textContent = bucket;
+    syncCaptureModeLabel();
+    renderQuickBucketSelector();
     setQuickBucketDropdownOpen(false);
     
     // Template Auto-Fill integration
@@ -2492,6 +2542,7 @@ function selectQuickBucket(bucket) {
         }
     }
 }
+window.selectAiClassify = selectAiClassify;
 
 function submitWithBucket(bucket) {
     if (pendingInputPayload) {

@@ -10,9 +10,9 @@ MemoryVault is a high-performance, local-first, zero-install backlog companion f
 
 1. **Sleek, Polished Dark Theme**: Inspired by premium engineering environments (Linear, GitHub), offering smooth CSS stats card transitions and customizable action triggers.
 2. **Zero-Install Local Database**: Built on portable SQLite utilizing **FTS5 Virtual tables** for lightning-fast Full-Text Search. Holds OneDrive/Dropbox friendly multi-instance writes.
-3. **Dual Local Reasoning & Fallback**:
-   - Queries **Ollama (Gemma 4)** locally at `http://localhost:11434` for secure offline backlog analysis and natural-language query lookup.
-   - Automatically re-routes to a high-reasoning **LLM Proxy on Port 8080** if local Ollama times out, is unreachable, or requests specialised delegation.
+3. **Local Ollama Reasoning & Hosted Proxy Fallback**:
+   - Queries **Ollama (Gemma 4)** locally at `http://localhost:11434` for secure offline backlog analysis and natural-language query lookup. The default model is `gemma4:12b-mlx`, overrideable with `OLLAMA_MODEL`.
+   - Automatically re-routes to a hosted-model **LLM Proxy on Port 8080** if local Ollama times out, is unreachable, or requests specialised delegation. Proxy-routed requests are not local Ollama inference.
 4. **100% Secure Local Tracing**: Avoids cloud latency and third-party trace tools (like LangSmith or self-hosted Langfuse). It writes call latency, payloads, and model tracking straight to an offline `llm_traces` table.
 5. **Mobile-First Progressive Web App (PWA)**: Supports "Add to Home Screen" standard on Android and iOS devices, with custom offline statics caching service workers.
 6. **Network Resilience Guarantee**: Captures notes locally in browser `localStorage` if you are on a plane, subway, or server restarts, batch syncing to backend once connection returns.
@@ -33,6 +33,8 @@ python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate.bat
 pip install -r requirements.txt
 ```
+
+`.venv/` is the authoritative virtual environment for this repo. Do not create `venv/`, `env/`, or other duplicate environments; launchers, VS Code settings, and test commands all target `.venv/`.
 
 ### 2️⃣ Run Background Launcher
 Start the server asynchronously in a visible background terminal using our automated loaders:
@@ -72,15 +74,17 @@ Enter triggers in the console footer:
 
 ---
 
-## 🧬 Local AI Configuration
+## 🧬 Local AI And Hosted Proxy Configuration
 
 To utilize natural-language summary and chat features offline:
 1. Spin up **Ollama** locally.
-2. Pull and run model `gemma4`:
+2. Pull and run model `gemma4:12b-mlx`:
    ```bash
-   ollama run gemma4
+   ollama run gemma4:12b-mlx
    ```
 3. Tap **Summarize Backlog** on your dashboard inside the frontend client.
+
+If a request is routed through `LLM_PROXY_HOST` / port `8080`, it is using the hosted-model proxy path rather than local Ollama Gemma 4. Traces label that route as `hosted-proxy/8080`.
 
 ---
 
@@ -104,7 +108,7 @@ def register_plugin(app: FastAPI):
 ## 🧪 Execute Test Suite
 
 ```bash
-pytest tests/
+PYTHONPATH=. .venv/bin/pytest tests/
 ```
 
 All 7 integration units run inside 0.15s, validating database FTS5 matching, model validation boundaries, sync backups and restore file-payload operations.

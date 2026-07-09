@@ -31,10 +31,12 @@ MEMORYVAULT_TOKEN = os.environ.get("MEMORYVAULT_TOKEN", "")
 # LLM Providers Configuration
 # Default is local Ollama endpoint
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:12b-mlx")
+OLLAMA_TIMEOUT_SECONDS = float(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "45"))
 
-# Local High-Reasoning Proxy Endpoint (Port 8080)
+# Hosted-model proxy endpoint (Port 8080). Requests routed here are not local Ollama inference.
 LLM_PROXY_HOST = os.environ.get("LLM_PROXY_HOST", "http://localhost:8080")
+LLM_PROXY_TIMEOUT_SECONDS = float(os.environ.get("LLM_PROXY_TIMEOUT_SECONDS", "20"))
 
 # Print settings summary
 def print_config():
@@ -42,7 +44,7 @@ def print_config():
     print(f"Database Path: {MEMORYVAULT_DB_PATH}")
     print(f"Server Host:   {MEMORYVAULT_HOST}")
     print(f"Server Port:   {MEMORYVAULT_PORT}")
-    print(f"Ollama Endpoint: {OLLAMA_HOST} (model: {OLLAMA_MODEL})")
-    print(f"LLM Proxy Endpoint: {LLM_PROXY_HOST}")
+    print(f"Ollama Endpoint: {OLLAMA_HOST} (model: {OLLAMA_MODEL}, timeout: {OLLAMA_TIMEOUT_SECONDS}s)")
+    print(f"Hosted Proxy Endpoint: {LLM_PROXY_HOST} (timeout: {LLM_PROXY_TIMEOUT_SECONDS}s)")
     print(f"Token Security: {'Enabled' if MEMORYVAULT_TOKEN else 'Disabled'}")
     print("---------------------------------")

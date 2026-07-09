@@ -8,7 +8,10 @@ temp_db_fd, temp_db_path = tempfile.mkstemp()
 os.environ["MEMORYVAULT_DB_PATH"] = temp_db_path
 
 # Import application server containing active environment context
+import backend.main as main
+from backend.store import EntryStore
 from backend.main import app
+main.store = EntryStore(db_path=temp_db_path)
 client = TestClient(app)
 
 @pytest.fixture(scope="module", autouse=True)
@@ -17,6 +20,11 @@ def cleanup_temp_db():
     os.close(temp_db_fd)
     if os.path.exists(temp_db_path):
         os.unlink(temp_db_path)
+
+@pytest.fixture(autouse=True)
+def stub_background_embeddings(monkeypatch):
+    import backend.llm as llm
+    monkeypatch.setattr(llm, "embed_text", lambda text: [])
 
 def test_api_add_lifecycle():
     # 1. Add post
@@ -74,7 +82,13 @@ def test_api_export_import():
     assert import_res.status_code == 200
     assert import_res.json()["imported_count"] == 1
 
-def test_api_auto_classification_fallback():
+def test_api_auto_classification_fallback(monkeypatch):
+    monkeypatch.setattr(main, "classify_and_tag_entry", lambda raw_text, store: {
+        "bucket": "ISSUE",
+        "title": "OAuth Memory Leak",
+        "description": "Critical heap allocation issue from the raw note.",
+        "tags": "oauth,memory,heap,leak"
+    })
     payload = {
         "title": "Fix memory leaks from oauth token handshake",
         "tags": "test-tag",
@@ -83,8 +97,27 @@ def test_api_auto_classification_fallback():
     response = client.post("/add", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["bucket"] in ["GOAL", "NOTE", "TASK", "ISSUE"]
+    assert data["bucket"] == "ISSUE"
+    assert data["title"] == "OAuth Memory Leak"
     assert "test-tag" in data["tags"]
+    assert "oauth" in data["tags"]
+
+def test_api_explicit_bucket_bypasses_classification(monkeypatch):
+    def fail_classifier(raw_text, store):
+        raise AssertionError("explicit buckets should not call classifier")
+
+    monkeypatch.setattr(main, "classify_and_tag_entry", fail_classifier)
+    response = client.post("/add", json={
+        "bucket": "NOTE",
+        "title": "Typed bucket stays authoritative",
+        "tags": "manual",
+        "description": "The user chose a concrete note type."
+    })
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["bucket"] == "NOTE"
+    assert data["title"] == "Typed bucket stays authoritative"
 
 def test_api_attachments_and_tag_intersection():
     # 1. Test image upload endpoint
@@ -205,3 +238,22 @@ def test_dynamic_buckets_and_sorting():
     # Try deleting standard default bucket (should be blocked)
     del_default = client.delete("/buckets/JOURNAL")
     assert del_default.status_code == 400
+
+def test_api_chat_session_reuse(monkeypatch):
+    monkeypatch.setattr(main, "evaluate_messages", lambda messages, store, trace_label=None: ("Stubbed answer", "stub/model", 5))
+
+    first = client.post("/chat", json={"query": "What is active in the vault?"})
+    assert first.status_code == 200
+    first_data = first.json()
+    assert first_data["response"] == "Stubbed answer"
+    assert first_data["conversation_id"]
+    assert isinstance(first_data["context_entry_ids"], list)
+
+    second = client.post("/chat", json={
+        "query": "What about that next?",
+        "conversation_id": first_data["conversation_id"]
+    })
+    assert second.status_code == 200
+    second_data = second.json()
+    assert second_data["conversation_id"] == first_data["conversation_id"]
+    assert main.store.get_conversation_turn_count(first_data["conversation_id"]) == 4

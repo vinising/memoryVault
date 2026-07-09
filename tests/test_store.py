@@ -2,7 +2,7 @@ import os
 import tempfile
 import pytest
 from backend.store import EntryStore
-from backend.models import NewEntry, PartialEntry, BucketEnum, LLMTrace
+from backend.models import NewEntry, PartialEntry, BucketEnum, LLMTrace, ChatRequest
 
 @pytest.fixture
 def temp_db_store():
@@ -31,6 +31,14 @@ def test_add_and_get_entry(temp_db_store):
     assert retrieved is not None
     assert retrieved.id == "#0001"
     assert retrieved.bucket == BucketEnum.TASK
+
+def test_new_entry_defaults_to_ai_classification():
+    entry = NewEntry(title="Raw unbucketed mobile capture")
+    assert entry.bucket is None
+
+    chat_request = ChatRequest(query="What should I work on?")
+    assert chat_request.conversation_id is None
+    assert chat_request.mode == "hybrid"
 
 def test_search_fuzzy_fts(temp_db_store):
     store = temp_db_store
@@ -93,3 +101,21 @@ def test_llm_trace_tracking(temp_db_store):
     assert len(traces) == 1
     assert traces[0]["model_used"] == "gemma4"
     assert traces[0]["latency_ms"] == 124
+
+def test_conversation_turn_persistence(temp_db_store):
+    store = temp_db_store
+    conversation_id = store.ensure_conversation(title="Mobile chat")
+    assert store.get_conversation(conversation_id)["title"] == "Mobile chat"
+
+    user_turn_id = store.add_conversation_turn(conversation_id, "user", "What is active?", ["#0001"])
+    assistant_turn_id = store.add_conversation_turn(conversation_id, "assistant", "One active item.", ["#0001"], "stub/model", 12)
+
+    assert user_turn_id > 0
+    assert assistant_turn_id > user_turn_id
+    turns = store.get_recent_turns(conversation_id, limit=5)
+    assert [turn["role"] for turn in turns] == ["user", "assistant"]
+    assert turns[0]["context_entry_ids"] == ["#0001"]
+    assert store.get_conversation_turn_count(conversation_id) == 2
+
+    store.update_conversation_summary(conversation_id, "User asked about active work.")
+    assert store.get_conversation(conversation_id)["summary"] == "User asked about active work."

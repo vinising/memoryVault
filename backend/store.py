@@ -3,6 +3,7 @@ import json
 import os
 import struct
 import math
+import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from backend.config import MEMORYVAULT_DB_PATH
@@ -134,6 +135,35 @@ class EntryStore:
                     timestamp TEXT NOT NULL
                 );
             """)
+
+            # 5. Durable lightweight chat sessions for mobile/PWA continuity
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id TEXT PRIMARY KEY,
+                    title TEXT,
+                    summary TEXT DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS conversation_turns (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    context_entry_ids TEXT DEFAULT '[]',
+                    model_used TEXT DEFAULT '',
+                    latency_ms INTEGER DEFAULT 0,
+                    timestamp TEXT NOT NULL
+                );
+            """)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_conversation_turns_conversation_id
+                ON conversation_turns(conversation_id, id);
+            """)
             conn.commit()
 
     def _row_to_entry(self, row) -> Entry:
@@ -231,6 +261,12 @@ class EntryStore:
         with self._get_connection() as conn:
             conn.execute("UPDATE entries SET embedding = ? WHERE id = ?", (blob, entry_id))
             conn.commit()
+
+    def has_embeddings(self) -> bool:
+        with self._get_connection() as conn:
+            return conn.execute(
+                "SELECT EXISTS(SELECT 1 FROM entries WHERE embedding IS NOT NULL LIMIT 1)"
+            ).fetchone()[0] == 1
 
     def semantic_search(self, query_text: str, top_k: int = 20) -> List[Entry]:
         """
@@ -508,6 +544,98 @@ class EntryStore:
                     )
                 )
             conn.commit()
+
+    # --- Conversation Session Handlers ---
+    def create_conversation(self, title: Optional[str] = None, conversation_id: Optional[str] = None) -> str:
+        now = datetime.now(timezone.utc).isoformat()
+        conv_id = conversation_id or str(uuid.uuid4())
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO conversations (id, title, summary, created_at, updated_at)
+                VALUES (?, ?, '', ?, ?)
+                """,
+                (conv_id, title or "MemoryVault Chat", now, now)
+            )
+            conn.commit()
+        return conv_id
+
+    def get_conversation(self, conversation_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def ensure_conversation(self, conversation_id: Optional[str] = None, title: Optional[str] = None) -> str:
+        if conversation_id and self.get_conversation(conversation_id):
+            return conversation_id
+        return self.create_conversation(title=title, conversation_id=conversation_id)
+
+    def update_conversation_summary(self, conversation_id: str, summary: str) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE conversations SET summary = ?, updated_at = ? WHERE id = ?",
+                (summary, now, conversation_id)
+            )
+            conn.commit()
+
+    def add_conversation_turn(
+        self,
+        conversation_id: str,
+        role: str,
+        content: str,
+        context_entry_ids: Optional[List[str]] = None,
+        model_used: str = "",
+        latency_ms: int = 0
+    ) -> int:
+        self.ensure_conversation(conversation_id)
+        now = datetime.now(timezone.utc).isoformat()
+        context_json = json.dumps(context_entry_ids or [])
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO conversation_turns (conversation_id, role, content, context_entry_ids, model_used, latency_ms, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (conversation_id, role, content, context_json, model_used, latency_ms, now)
+            )
+            conn.execute(
+                "UPDATE conversations SET updated_at = ? WHERE id = ?",
+                (now, conversation_id)
+            )
+            conn.commit()
+            return cursor.lastrowid or 0
+
+    def get_recent_turns(self, conversation_id: str, limit: int = 8) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT * FROM conversation_turns
+                WHERE conversation_id = ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (conversation_id, limit)
+            )
+            rows = list(reversed(cursor.fetchall()))
+
+        turns = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["context_entry_ids"] = json.loads(item.get("context_entry_ids") or "[]")
+            except Exception:
+                item["context_entry_ids"] = []
+            turns.append(item)
+        return turns
+
+    def get_conversation_turn_count(self, conversation_id: str) -> int:
+        with self._get_connection() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM conversation_turns WHERE conversation_id = ?",
+                (conversation_id,)
+            ).fetchone()[0]
 
     # --- Local Tracing Analytics Database Handlers ---
     def add_llm_trace(self, trace: LLMTrace) -> int:
