@@ -1929,6 +1929,7 @@ function renderFilteredTimeline() {
                 
                 const cleanTitle = escapeHtml(decodeHtmlEntities(entry.title || "Untitled"));
                 const decodedDescription = decodeHtmlEntities(entry.description || "").trim();
+                const streamDescPreview = escapeHtml(toPlainTextPreview(decodedDescription, 150));
                 const descriptionMarkup = formatDescriptionHtml(decodedDescription, isExpanded, useCardsLayout);
                 
                 let cardTagsHtml = "";
