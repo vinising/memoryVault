@@ -2789,6 +2789,7 @@ let startPanMouse = { x: 0, y: 0 };
 let currentHoverNode = null;
 let graphSimulationTimer = null;
 let drawTagLinksOption = true;
+let selectedGraphNode = null;
 
 function setupGraphBindings() {
     const toggleTagsInput = document.getElementById("toggleTagLinks");
@@ -2827,10 +2828,18 @@ function setupGraphBindings() {
     const detailsEdit = document.getElementById("nodeDetailsEditBtn");
     if (detailsEdit) {
         detailsEdit.addEventListener("click", () => {
-            const selectedTitle = document.getElementById("nodeDetailsTitle").innerText;
-            const match = selectedTitle.match(/#\\d{4}/);
-            if (match) {
-                snapFocusToNote(match[0]);
+            if (selectedGraphNode) {
+                if (selectedGraphNode.bucket === "TAG") {
+                    filterTimelineByTag(selectedGraphNode.title);
+                } else {
+                    snapFocusToNote(selectedGraphNode.id);
+                }
+            } else {
+                const selectedTitle = document.getElementById("nodeDetailsTitle").innerText;
+                const match = selectedTitle.match(/#\\d{4}/);
+                if (match) {
+                    snapFocusToNote(match[0]);
+                }
             }
         });
     }
@@ -2875,7 +2884,7 @@ function initializeGraphSimulation(entries) {
     const coordMap = new Map();
     nodes.forEach(n => coordMap.set(n.id, { x: n.x, y: n.y, vx: n.vx, vy: n.vy }));
     
-    nodes = entries.map(entry => {
+    const entryNodes = entries.map(entry => {
         const cached = coordMap.get(entry.id);
         const x = cached ? cached.x : (Math.random() - 0.5) * 400 + canvas.width / 2;
         const y = cached ? cached.y : (Math.random() - 0.5) * 400 + canvas.height / 2;
@@ -2894,12 +2903,48 @@ function initializeGraphSimulation(entries) {
         };
     });
 
+    const tagCounts = {};
+    if (drawTagLinksOption) {
+        entryNodes.forEach(node => {
+            node.tags.forEach(tag => {
+                if (!tag) return;
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            });
+        });
+    }
+
+    const tagNodes = [];
+    if (drawTagLinksOption) {
+        Object.entries(tagCounts).forEach(([tag, count]) => {
+            const tagId = `tag:${tag}`;
+            const cached = coordMap.get(tagId);
+            const x = cached ? cached.x : (Math.random() - 0.5) * 400 + canvas.width / 2;
+            const y = cached ? cached.y : (Math.random() - 0.5) * 400 + canvas.height / 2;
+            tagNodes.push({
+                id: tagId,
+                bucket: "TAG",
+                title: tag,
+                tags: [],
+                description: `Tag Hub for #${tag}`,
+                status: "open",
+                x: x,
+                y: y,
+                vx: cached ? cached.vx : 0,
+                vy: cached ? cached.vy : 0,
+                radius: 8 + 4 * Math.log(count + 1) // dynamic scaling based on tag density/usage count
+            });
+        });
+    }
+
+    nodes = [...entryNodes, ...tagNodes];
     edges = [];
     
     // Parse Explicit Links inside titles or descriptions (e.g. #0012 or [[#0012]])
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
     
     nodes.forEach(node => {
+        if (node.bucket === "TAG") return;
+
         const contentText = (node.title + " " + node.description).toLowerCase();
         
         // Match standard ID anchors like [[#0012]] or #0012
@@ -2918,25 +2963,19 @@ function initializeGraphSimulation(entries) {
             }
         });
 
-        // Toggleable soft connections sharing tags
+        // Toggleable connections to tag nodes
         if (drawTagLinksOption) {
             node.tags.forEach(tag => {
                 if (!tag) return;
-                nodes.forEach(other => {
-                    if (other.id !== node.id && other.tags.includes(tag)) {
-                        // Soft link drew symmetrically. Prevent redundant duplicates
-                        const linkGroupKey = [node.id, other.id].sort().join("-");
-                        if (!edges.some(e => e.key === linkGroupKey)) {
-                            edges.push({
-                                source: node.id,
-                                target: other.id,
-                                type: "tag",
-                                tag: tag,
-                                key: linkGroupKey
-                            });
-                        }
-                    }
-                });
+                const tagNodeId = `tag:${tag}`;
+                if (nodeMap.has(tagNodeId)) {
+                    edges.push({
+                        source: node.id,
+                        target: tagNodeId,
+                        type: "tag",
+                        tag: tag
+                    });
+                }
             });
         }
     });
@@ -3120,6 +3159,7 @@ function drawGraph() {
     nodes.forEach(node => {
         const colorPalette = getNodeColors(node.bucket);
         
+        ctx.save();
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, 2*Math.PI);
         
@@ -3136,14 +3176,20 @@ function drawGraph() {
             ctx.lineWidth = 2.5;
             ctx.shadowColor = "#ffffff";
             ctx.shadowBlur = 12;
+            ctx.setLineDash([]);
         } else {
             ctx.strokeStyle = colorPalette.border;
             ctx.lineWidth = 1.5;
             ctx.shadowColor = "transparent";
             ctx.shadowBlur = 0;
+            if (node.bucket === "TAG") {
+                ctx.setLineDash([3, 3]);
+            } else {
+                ctx.setLineDash([]);
+            }
         }
         ctx.stroke();
-        ctx.shadowBlur = 0; // reset
+        ctx.restore();
         
         // Node labels
         ctx.font = "bold 9px sans-serif";
@@ -3151,13 +3197,15 @@ function drawGraph() {
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#8b949e";
         
-        // ID Badge
-        ctx.fillText(node.id, node.x, node.y - node.radius - 12);
+        // ID Badge / Label Header
+        if (node.bucket !== "TAG") {
+            ctx.fillText(node.id, node.x, node.y - node.radius - 12);
+        }
         
         // Title Text
         ctx.font = "9px sans-serif";
         ctx.fillStyle = "#e6edf3";
-        const textVal = node.title.length > 20 ? node.title.substring(0, 18) + '...' : node.title;
+        const textVal = node.bucket === "TAG" ? "#" + node.title : (node.title.length > 20 ? node.title.substring(0, 18) + '...' : node.title);
         ctx.fillText(textVal, node.x, node.y + node.radius + 11);
     });
     
@@ -3185,11 +3233,13 @@ function drawArrowhead(ctx, fromX, fromY, toX, toY, fromRadius, toRadius) {
 }
 
 function getNodeColors(bucket) {
+    if (!bucket) return { fill: "#4b5563", gradientEnd: "#374151", border: "#9ca3af" };
     switch (bucket.toUpperCase()) {
         case "GOAL": return { fill: "#7c3aed", gradientEnd: "#6d28d9", border: "#a78bfa" };      // Purple
         case "NOTE": return { fill: "#2563eb", gradientEnd: "#1d4ed8", border: "#60a5fa" };      // Blue
         case "TASK": return { fill: "#d97706", gradientEnd: "#b45309", border: "#fbbf24" };      // Yellow
         case "ISSUE": return { fill: "#dc2626", gradientEnd: "#b91c1c", border: "#f87171" };     // Red
+        case "TAG": return { fill: "#14b8a6", gradientEnd: "#0d9488", border: "#5eead4" };       // Teal/Cyan
         default: return { fill: "#4b5563", gradientEnd: "#374151", border: "#9ca3af" };          // Grey
     }
 }
@@ -3232,6 +3282,7 @@ function onCanvasMouseDown(e) {
 
     if (hitNode) {
         dragNode = hitNode;
+        selectedGraphNode = hitNode;
         // Float side information details panel
         populateNodeDetailsWidget(hitNode);
         triggerGraphSimulation();
@@ -3305,9 +3356,21 @@ function onCanvasDoubleClick(e) {
     const m = getMousePosFromCanvas(e);
     const hitNode = findClosestNodeAtPosition(m, 6);
     if (hitNode) {
-        snapFocusToNote(hitNode.id);
+        if (hitNode.bucket === "TAG") {
+            filterTimelineByTag(hitNode.title);
+        } else {
+            snapFocusToNote(hitNode.id);
+        }
     }
 }
+
+function filterTimelineByTag(tag) {
+    activeTimelineTagFilters = [tag.toLowerCase()];
+    switchView("timeline");
+    updateTimelineTagFiltersUI();
+    renderFilteredTimeline();
+}
+window.filterTimelineByTag = filterTimelineByTag;
 
 function populateNodeDetailsWidget(node) {
     const details = document.getElementById("graphNodeDetails");
@@ -3320,22 +3383,42 @@ function populateNodeDetailsWidget(node) {
     
     details.classList.remove("hidden");
     
-    title.innerText = node.title;
-    const detailIdEl = document.getElementById('nodeDetailsId');
-    if (detailIdEl) detailIdEl.innerText = node.id;
-    desc.textContent = toPlainTextPreview(node.description || "No description detailed.");
-    
-    badge.innerText = node.bucket;
-    badge.className = `text-2xs px-2.5 py-0.5 rounded-full font-bold ${getStatusClass(node.status)}`;
-    
     tagsDiv.innerHTML = "";
-    node.tags.forEach(t => {
-        if (!t) return;
-        const tSpan = document.createElement("span");
-        tSpan.className = "bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-3xs font-bold border border-gray-750";
-        tSpan.innerText = `#${t}`;
-        tagsDiv.appendChild(tSpan);
-    });
+    
+    if (node.bucket === "TAG") {
+        title.innerText = "#" + node.title;
+        const detailIdEl = document.getElementById('nodeDetailsId');
+        if (detailIdEl) detailIdEl.innerText = "Tag Hub";
+        
+        badge.innerText = "TAG";
+        badge.className = `text-3xs px-2.5 py-1 rounded-full font-bold bg-teal-500/10 border border-teal-500/20 text-teal-400`;
+        
+        const connectedNotes = nodes.filter(n => n.bucket !== "TAG" && n.tags.includes(node.title));
+        
+        desc.innerHTML = `<div class="font-bold text-gray-400 mb-1">Contains ${connectedNotes.length} active records:</div>` + 
+                         (connectedNotes.length > 0 
+                           ? `<ul class="space-y-1.5 mt-2 font-mono text-gray-300">` + 
+                             connectedNotes.map(n => `<li class="flex items-center space-x-1.5"><span class="text-blue-400 font-extrabold hover:underline cursor-pointer" onclick="snapFocusToNote('${n.id}')">${n.id}</span> <span class="truncate max-w-[180px]">${n.title}</span> <span class="text-2xs bg-gray-800 px-1 py-0.5 rounded tracking-wider uppercase font-bold text-gray-500 scale-90 translate-y-[1px]">${n.bucket}</span></li>`).join("") + 
+                             `</ul>`
+                           : `<div class="text-gray-500 italic">No notes tagged with #${node.title} found.</div>`);
+    } else {
+        title.innerText = node.title;
+        const detailIdEl = document.getElementById('nodeDetailsId');
+        if (detailIdEl) detailIdEl.innerText = node.id;
+        
+        desc.textContent = toPlainTextPreview(node.description || "No description detailed.");
+        
+        badge.innerText = node.bucket;
+        badge.className = `text-2xs px-2.5 py-0.5 rounded-full font-bold ${getStatusClass(node.status)}`;
+        
+        node.tags.forEach(t => {
+            if (!t) return;
+            const tSpan = document.createElement("span");
+            tSpan.className = "bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-3xs font-bold border border-gray-750";
+            tSpan.innerText = `#${t}`;
+            tagsDiv.appendChild(tSpan);
+        });
+    }
 }
 
 // Window resizing adjustments
